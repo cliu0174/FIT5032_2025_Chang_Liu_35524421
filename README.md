@@ -1,35 +1,5 @@
-# cliu-library
+# FIT5032_2025_Chang_Liu_35524421
 
-This template should help get you started developing with Vue 3 in Vite.
+Chang Liu's repository for FIT5032 unit, Term 3 2025.
 
-## Recommended IDE Setup
-
-[VSCode](https://code.visualstudio.com/) + [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur).
-
-## Customize configuration
-
-See [Vite Configuration Reference](https://vite.dev/config/).
-
-## Project Setup
-
-```sh
-npm install
-```
-
-### Compile and Hot-Reload for Development
-
-```sh
-npm run dev
-```
-
-### Compile and Minify for Production
-
-```sh
-npm run build
-```
-
-### Lint with [ESLint](https://eslint.org/)
-
-```sh
-npm run lint
-```
+> > > > > > > 63ca07ce7d44f8c18c522b6b61917e29b59a7353
