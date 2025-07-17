@@ -2,11 +2,13 @@
 // import HelloWorld from './components/HelloWorld.vue'
 // import Json from './components/JSON.vue'
 import LoginForm from './components/LoginForm.vue'
+// import PrimeVueForm from './components/PrimeVue_DataTable.vue'
 </script>
 
 <template>
   <!-- <Json /> -->
   <LoginForm />
+  <!-- <PrimeVueForm /> -->
 </template>
 
 <style scoped>
