@@ -83,7 +83,7 @@
             <button type="button" class="btn btn-secondary" @click="clearForm">Clear</button>
           </div>
 
-          <div class="row mt-5" v-if="submittedCards.length">
+          <!-- <div class="row mt-5" v-if="submittedCards.length">
             <div class="d-flex flex-wrap justify-content-start">
               <div
                 v-for="(card, index) in submittedCards"
@@ -103,7 +103,7 @@
                 </ul>
               </div>
             </div>
-          </div>
+          </div> -->
         </form>
 
         <div class="mt-5">
