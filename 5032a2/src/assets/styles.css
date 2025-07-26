@@ -1,0 +1,9 @@
+/* src/assets/styles.css */
+:root {
+  /* 主色调设为淡紫色 */
+  --primary-color: #E6E6FA;
+  /* hover 状态稍微深一点 */
+  --primary-hover: #D8BFD8;
+  /* 浅色背景上文字用深紫色提高可读性 */
+  --text-on-primary: #4B0082;
+}
