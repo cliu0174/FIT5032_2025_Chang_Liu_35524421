@@ -1,7 +1,7 @@
 <template>
   <div>
     <header class="header">
-      <!-- 第一行：Logo + 登录 -->
+      <!-- 第一行：Logo + 登录/状态 -->
       <div class="header-top">
         <img class="logo" :src="logo" alt="HarmoNest Logo" />
 
@@ -12,54 +12,148 @@
           <span></span>
         </button>
 
-        <!-- 桌面端右侧内容 -->
+        <!-- 桌面端右侧内容，根据登录状态切换 -->
         <div class="header-top-right">
           <img class="login-icon" :src="loginIcon" alt="Icon" />
-          <router-link to="/login" class="auth-button">Login</router-link>
-          <router-link to="/register" class="auth-button">Register</router-link>
+          <template v-if="isLoggedIn">
+            <span class="welcome-text">Hello, {{ currentUser }}</span>
+            <button class="auth-button" @click="onLogout">Logout</button>
+          </template>
+          <template v-else>
+            <router-link to="/login" class="auth-button">Login</router-link>
+            <router-link to="/register" class="auth-button">Register</router-link>
+          </template>
         </div>
       </div>
 
-      <!-- 第二行：主导航 + 移动端登录注册 -->
+      <!-- 第二行：主导航 + 管理页面入口 -->
       <nav class="header-bottom" :class="{ 'mobile-menu-open': isMobileMenuOpen }">
-        <router-link to="/" exact @click="closeMobileMenu">首页</router-link>
-        <router-link to="/services" @click="closeMobileMenu">服务</router-link>
-        <router-link to="/appointment" @click="closeMobileMenu">预约</router-link>
-        <router-link to="/contact" @click="closeMobileMenu">联系我们</router-link>
+        <router-link to="/" exact @click="closeMobileMenu">Home</router-link>
+        <router-link to="/services" @click="closeMobileMenu">Services</router-link>
+        <router-link to="/appointment" @click="closeMobileMenu">Appointment</router-link>
+        <router-link to="/contact" @click="closeMobileMenu">Contact</router-link>
+        <router-link v-if="currentRole === 'admin'" to="/admin-dashboard">Admin Dashboard</router-link>
 
-        <!-- 移动端专用的登录注册区域 -->
+        <!-- 移动端登录/注册 -->
         <div class="mobile-auth-section">
-          <router-link to="/login" class="mobile-auth-button" @click="closeMobileMenu">
-            👤 Login
-          </router-link>
-          <router-link to="/register" class="mobile-auth-button" @click="closeMobileMenu">
-            📝 Register
-          </router-link>
+          <template v-if="isLoggedIn">
+            <span class="mobile-welcome">👤 Hello, {{ currentUser }}</span>
+            <button class="mobile-auth-button logout-btn" @click="onLogout">🚪 Logout</button>
+          </template>
+          <template v-else>
+            <router-link to="/login" class="mobile-auth-button" @click="closeMobileMenu">👤 Login</router-link>
+            <router-link to="/register" class="mobile-auth-button" @click="closeMobileMenu">📝 Register</router-link>
+          </template>
         </div>
       </nav>
     </header>
 
     <main><router-view/></main>
 
-    <footer class="footer">© 2025 健康服务平台</footer>
+    <footer class="footer">© 2025 HarmoNest Health Foundation</footer>
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted, watch } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import logo from '@/assets/logo.png'
 import loginIcon from '@/assets/login-icon.png'
 
+const router = useRouter()
+const route = useRoute()
 const isMobileMenuOpen = ref(false)
 
-const toggleMobileMenu = () => {
-  isMobileMenuOpen.value = !isMobileMenuOpen.value
+// 🔧 修改：使用响应式 ref 替代 computed
+const isLoggedIn = ref(false)
+const currentUser = ref('')
+const currentRole = ref('')
+
+// 🔧 新增：更新登录状态的函数
+function updateAuthStatus() {
+  isLoggedIn.value = localStorage.getItem('isLoggedIn') === 'true'
+  currentUser.value = localStorage.getItem('currentUser') || ''
+  currentRole.value = localStorage.getItem('currentRole') || ''
 }
 
-const closeMobileMenu = () => {
+// 🔧 新增：组件挂载时初始化状态
+onMounted(() => {
+  updateAuthStatus()
+})
+
+// 🔧 新增：监听路由变化，每次路由变化时检查登录状态
+watch(route, () => {
+  updateAuthStatus()
+})
+
+// 🔧 新增：暴露更新函数给全局使用
+window.updateAuthStatus = updateAuthStatus
+
+function toggleMobileMenu() {
+  isMobileMenuOpen.value = !isMobileMenuOpen.value
+}
+function closeMobileMenu() {
   isMobileMenuOpen.value = false
 }
+function onLogout() {
+  // 清除本地存储
+  localStorage.removeItem('isLoggedIn')
+  localStorage.removeItem('currentUser')
+  localStorage.removeItem('currentRole')
+
+  // 🔧 新增：立即更新状态
+  updateAuthStatus()
+
+  // 关闭移动端菜单
+  isMobileMenuOpen.value = false
+  // 使用 replace 避免回退后依然登录
+  location.reload()
+}
 </script>
+
+<style>
+/* 只加入新样式 */
+.welcome-text {
+  margin-right: 1rem;
+  font-weight: 500;
+  color: var(--text-on-primary);
+}
+.btn-logout {
+  background: transparent;
+  border: 1px solid var(--text-on-primary);
+  color: var(--text-on-primary);
+  padding: 0.4rem 0.8rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: opacity .2s;
+}
+.btn-logout:hover {
+  opacity: 0.8;
+}
+</style>
+
+
+
+<style>
+/* 只加入新样式 */
+.welcome-text {
+  margin-right: 1rem;
+  font-weight: 500;
+  color: var(--text-on-primary);
+}
+.btn-logout {
+  background: transparent;
+  border: 1px solid var(--text-on-primary);
+  color: var(--text-on-primary);
+  padding: 0.4rem 0.8rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: opacity .2s;
+}
+.btn-logout:hover {
+  opacity: 0.8;
+}
+</style>
 
 <style>
 /* 响应式根字体大小 */
@@ -137,8 +231,12 @@ html {
   text-decoration: none;
   font-weight: 500;
   transition: opacity 0.2s;
-  white-space: nowrap; /* 防止文字换行 */
+  white-space: nowrap;
+  font-family: "Microsoft YaHei", "PingFang SC", "Helvetica Neue", Arial, sans-serif; /* 字体 */
+  font-size: 1rem; /* 字号 */
+  border: none; /* 重要：去掉黑色边框！ */
 }
+
 
 .auth-button:hover {
   opacity: 0.8;
@@ -205,11 +303,36 @@ html {
   border-radius: 8px;
   transition: all 0.3s ease;
   border: 1px solid rgba(255,255,255,0.2);
+  cursor: pointer;
 }
 
 .mobile-auth-button:hover {
   background: rgba(255,255,255,0.2);
   transform: translateY(-2px);
+}
+
+/* 移动端欢迎信息 */
+.mobile-welcome {
+  flex: 1;
+  padding: 1rem;
+  text-align: center;
+  color: var(--text-on-primary);
+  font-weight: 600;
+  background: rgba(255,255,255,0.1);
+  margin: 0 0.25rem;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.2);
+  font-size: 0.95rem;
+}
+
+/* 移动端退出按钮 */
+.logout-btn {
+  background: rgba(220, 53, 69, 0.2) !important;
+  border-color: rgba(220, 53, 69, 0.4) !important;
+}
+
+.logout-btn:hover {
+  background: rgba(220, 53, 69, 0.3) !important;
 }
 
 /* Footer 响应式 */
@@ -384,4 +507,18 @@ html {
     display: none;
   }
 }
+/* 只加入新样式 */
+.welcome-text {
+  margin-right: 1rem;
+  font-weight: 500;
+  color: var(--text-on-primary);
+}
+.welcome-text {
+  margin-right: 1rem;
+  font-weight: 500;
+  color: var(--text-on-primary);
+  font-family: "Microsoft YaHei", "PingFang SC", "Helvetica Neue", Arial, sans-serif;
+  font-size: 1rem;
+}
+
 </style>
