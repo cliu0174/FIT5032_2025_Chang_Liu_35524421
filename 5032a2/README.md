@@ -1,35 +1,69 @@
-# 5032a2
+# HarmoNest Health Platform
 
-This template should help get you started developing with Vue 3 in Vite.
+A community-focused health services web app built with **Vue 3**, designed to provide easy appointment booking, user feedback ratings, and admin insights.
 
-## Recommended IDE Setup
+## 🌟 Features
 
-[VSCode](https://code.visualstudio.com/) + [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur).
+- 🏠 Home page with welcome message and featured services
+- 👩‍⚕️ Appointment booking for various healthcare services
+- 📊 Service rating system (stored and viewable by admins)
+- 🔒 Login/Register with basic role-based access (user/admin)
+- 🧑‍💻 Admin Dashboard to manage ratings and view feedback
+- 📞 Contact page for user inquiries
 
-## Customize configuration
+## 📁 Project Structure
 
-See [Vite Configuration Reference](https://vite.dev/config/).
+src/
+├── assets/ # Static files (images, stylesheets)
+├── components/ # Reusable Vue components
+├── router/ # Vue Router setup
+├── store/ # (Reserved for Vuex if needed)
+├── utils/ # Helper JS files for users, ratings, etc.
+├── views/ # Page-level Vue components
+└── App.vue # Root component
 
-## Project Setup
+markdown
+Copy
+Edit
 
-```sh
+### Key Files
+
+- `views/Services.vue` – Renders all services with ratings and links to rating form  
+- `views/Rating.vue` – User form to rate a service  
+- `views/AdminDashboard.vue` – Admin view to check stored ratings  
+- `utils/ratings.js` – Local storage helper for saving and retrieving rating data  
+- `views/Login.vue`, `Register.vue` – Role-based login system
+
+## 🚀 Getting Started
+
+### Prerequisites
+
+- Node.js ≥ 14
+- Vue CLI
+
+### Installation
+
+```bash
 npm install
-```
-
-### Compile and Hot-Reload for Development
-
-```sh
 npm run dev
-```
+Then open: http://localhost:5173
 
-### Compile and Minify for Production
+🔐 Roles & Access
+Role	Access Features
+user	Book appointment, Rate service
+admin	View ratings dashboard
 
-```sh
-npm run build
-```
+Admin credentials are hardcoded in Login.vue (e.g., admin@example.com / password: admin123)
 
-### Lint with [ESLint](https://eslint.org/)
+🗃️ Storage
+All rating and login data are stored in localStorage for simplicity in this demo.
 
-```sh
-npm run lint
-```
+📷 Screenshots
+You can add screenshots of Services.vue and AdminDashboard.vue here to showcase features.
+
+📌 Future Improvements
+Persistent database integration (e.g., Firebase / MongoDB)
+
+Email notifications for appointments
+
+Rating charts for admin analytics
