@@ -2,6 +2,9 @@
   "devDependencies": {
     "@vitejs/plugin-vue": "^6.0.0"
   },
+  "scripts": {
+    "build": "npm run build"
+  }，
   "dependencies": {
     "pinia": "^3.0.3",
     "vue-router": "^4.5.1"
