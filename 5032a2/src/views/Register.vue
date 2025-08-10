@@ -1,11 +1,11 @@
 <template>
   <div class="app-container">
-    <!-- 主要内容区域 -->
+    <!-- Main content area -->
     <div class="main-content">
 
-      <!-- 验证错误汇总 -->
+      <!-- Validation error summary -->
       <div v-if="hasValidationErrors" class="validation-summary">
-        <h4>请修正以下错误：</h4>
+        <h4>Please correct the following errors:</h4>
         <ul>
           <li v-if="errors.username">{{ errors.username }}</li>
           <li v-if="errors.email">{{ errors.email }}</li>
@@ -17,10 +17,10 @@
         </ul>
       </div>
 
-      <!-- 注册表单 -->
+      <!-- Registration form -->
       <div class="registration-form">
         <form @submit.prevent="onRegister">
-          <!-- 第一行：用户名和性别 -->
+          <!-- First row: Username and Gender -->
           <div class="form-row">
             <div class="form-group">
               <label for="username" class="form-label">Username</label>
@@ -46,7 +46,7 @@
                 :class="{ 'error': errors.gender }"
                 @change="validateGender"
               >
-                <option value="">请选择</option>
+                <option value="">Please select</option>
                 <option value="Male">Male</option>
                 <option value="Female">Female</option>
                 <option value="Other">Other</option>
@@ -55,7 +55,7 @@
             </div>
           </div>
 
-          <!-- 第二行：密码和确认密码 -->
+          <!-- Second row: Password and Confirm Password -->
           <div class="form-row">
             <div class="form-group">
               <label for="password" class="form-label">Password</label>
@@ -88,7 +88,7 @@
             </div>
           </div>
 
-          <!-- 复选框 -->
+          <!-- Checkbox -->
           <div class="form-group checkbox-group">
             <label class="checkbox-label">
               <input
@@ -101,7 +101,7 @@
             </label>
           </div>
 
-          <!-- 邮箱和电话 -->
+          <!-- Email and Phone -->
           <div class="form-row">
             <div class="form-group">
               <label for="email" class="form-label">Email</label>
@@ -134,7 +134,7 @@
             </div>
           </div>
 
-          <!-- 地址 -->
+          <!-- Address -->
           <div class="form-group">
             <label for="address" class="form-label">Suburb</label>
             <input
@@ -150,7 +150,7 @@
             <div v-if="errors.address" class="field-error">{{ errors.address }}</div>
           </div>
 
-          <!-- 提交按钮 -->
+          <!-- Submit buttons -->
           <div class="form-actions">
             <button type="submit" class="btn btn-submit" :disabled="!isFormValid">Submit</button>
             <button type="button" class="btn btn-clear" @click="clearForm">Clear</button>
@@ -158,7 +158,7 @@
         </form>
       </div>
 
-      <!-- 注册用户表格 -->
+      <!-- Registered users table -->
       <div v-if="registeredUsers.length > 0" class="users-table">
         <h3>Registered Users</h3>
         <table>
@@ -217,12 +217,12 @@ const errors = reactive({
   gender: null,
 })
 
-// 计算属性：检查是否有验证错误
+// Computed property: Check if there are validation errors
 const hasValidationErrors = computed(() => {
   return Object.values(errors).some(error => error !== null)
 })
 
-// 计算属性：表单是否有效
+// Computed property: Check if form is valid
 const isFormValid = computed(() => {
   return form.username.trim() &&
          form.email.trim() &&
@@ -234,14 +234,14 @@ const isFormValid = computed(() => {
          !hasValidationErrors.value
 })
 
-// 验证函数
+// Validation functions
 const validateUsername = (blur) => {
   if (!form.username.trim()) {
-    if (blur) errors.username = '用户名不能为空'
+    if (blur) errors.username = 'Username cannot be empty'
   } else if (form.username.length < 3) {
-    if (blur) errors.username = '用户名至少3位'
+    if (blur) errors.username = 'Username must be at least 3 characters'
   } else if (!/^[A-Za-z0-9]+$/.test(form.username)) {
-    if (blur) errors.username = '用户名只能包含字母/数字'
+    if (blur) errors.username = 'Username can only contain letters and numbers'
   } else {
     errors.username = null
   }
@@ -250,9 +250,9 @@ const validateUsername = (blur) => {
 const validateEmail = (blur) => {
   const re = /^\S+@\S+\.\S+$/
   if (!form.email.trim()) {
-    if (blur) errors.email = '邮箱不能为空'
+    if (blur) errors.email = 'Email cannot be empty'
   } else if (!re.test(form.email)) {
-    if (blur) errors.email = '邮箱格式不正确'
+    if (blur) errors.email = 'Email format is incorrect'
   } else {
     errors.email = null
   }
@@ -260,9 +260,9 @@ const validateEmail = (blur) => {
 
 const validatePassword = (blur) => {
   if (!form.password.trim()) {
-    if (blur) errors.password = '密码不能为空'
+    if (blur) errors.password = 'Password cannot be empty'
   } else if (form.password.length < 6) {
-    if (blur) errors.password = '密码至少6位'
+    if (blur) errors.password = 'Password must be at least 6 characters'
   } else {
     errors.password = null
   }
@@ -270,9 +270,9 @@ const validatePassword = (blur) => {
 
 const validateConfirmPassword = (blur) => {
   if (!form.confirm.trim()) {
-    if (blur) errors.confirm = '请确认密码'
+    if (blur) errors.confirm = 'Please confirm password'
   } else if (form.confirm !== form.password) {
-    if (blur) errors.confirm = '两次密码不一致'
+    if (blur) errors.confirm = 'Passwords do not match'
   } else {
     errors.confirm = null
   }
@@ -280,9 +280,9 @@ const validateConfirmPassword = (blur) => {
 
 const validatePhone = (blur) => {
   if (!form.phone.trim()) {
-    if (blur) errors.phone = '手机号不能为空'
+    if (blur) errors.phone = 'Phone number cannot be empty'
   } else if (!/^\d{10}$/.test(form.phone)) {
-    if (blur) errors.phone = '手机号需为10位数字'
+    if (blur) errors.phone = 'Phone number must be 10 digits'
   } else {
     errors.phone = null
   }
@@ -290,7 +290,7 @@ const validatePhone = (blur) => {
 
 const validateAddress = (blur) => {
   if (!form.address.trim()) {
-    if (blur) errors.address = '住址不能为空'
+    if (blur) errors.address = 'Address cannot be empty'
   } else {
     errors.address = null
   }
@@ -298,13 +298,13 @@ const validateAddress = (blur) => {
 
 const validateGender = () => {
   if (!form.gender) {
-    errors.gender = '请选择性别'
+    errors.gender = 'Please select gender'
   } else {
     errors.gender = null
   }
 }
 
-// 清空表单
+// Clear form
 const clearForm = () => {
   Object.assign(form, {
     username: '',
@@ -319,9 +319,9 @@ const clearForm = () => {
   Object.keys(errors).forEach(k => (errors[k] = null))
 }
 
-// 提交表单
+// Submit form
 const onRegister = () => {
-  // 触发所有验证
+  // Trigger all validations
   validateUsername(true)
   validateEmail(true)
   validatePassword(true)
@@ -330,41 +330,40 @@ const onRegister = () => {
   validateAddress(true)
   validateGender()
 
-  // 检查是否有错误
+  // Check if there are any errors
   if (Object.values(errors).every(e => !e)) {
-    // 添加用户到列表（模拟数据库）
-    // 1. 先取本地已注册用户
-let users = JSON.parse(localStorage.getItem('users') || '[]')
+    // Add user to list (simulate database)
+    // 1. Get existing registered users from local storage
+    let users = JSON.parse(localStorage.getItem('users') || '[]')
 
-// 2. 检查用户名是否已存在（可选）
-if (users.some(u => u.username === form.username)) {
-  alert('Username already exists!')
-  return
-}
+    // 2. Check if username already exists (optional)
+    if (users.some(u => u.username === form.username)) {
+      alert('Username already exists!')
+      return
+    }
 
-// 3. 添加新用户
-const newUser = {
-  username: form.username,
-  email: form.email,
-  gender: form.gender,
-  isCitizen: form.isCitizen,
-  address: form.address,
-  password: form.password  // 方便登录用
-}
-// 4. 写入本地
-users.push(newUser)
-localStorage.setItem('users', JSON.stringify(users))
+    // 3. Add new user
+    const newUser = {
+      username: form.username,
+      email: form.email,
+      gender: form.gender,
+      isCitizen: form.isCitizen,
+      address: form.address,
+      password: form.password  // For login convenience
+    }
+    // 4. Save to local storage
+    users.push(newUser)
+    localStorage.setItem('users', JSON.stringify(users))
 
-// 5. 页面内列表也更新
-registeredUsers.value = users
+    // 5. Update page list as well
+    registeredUsers.value = users
 
-alert('注册成功！')
-clearForm()
-// router.push('/login')
-
+    alert('Registration successful!')
+    clearForm()
+    // router.push('/login')
 
     // addUser({ username: form.username, password: form.password })
-    alert('注册成功！')
+    alert('Registration successful!')
     clearForm()
     // router.push('/login')
   }
