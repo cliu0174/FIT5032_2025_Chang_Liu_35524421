@@ -3,7 +3,7 @@
     "@vitejs/plugin-vue": "^6.0.0"
   },
   "scripts": {
-    "build": "npm run build"
+    "build": "vite build"
   },
   "dependencies": {
     "pinia": "^3.0.3",
