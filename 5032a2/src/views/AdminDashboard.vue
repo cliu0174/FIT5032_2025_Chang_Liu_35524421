@@ -38,29 +38,96 @@
         <button type="submit">Add User</button>
       </form>
 
-      <!-- 用户表格 -->
-      <table>
+      <!-- ✅ 用户表格（原生 table + 交互） -->
+      <div class="users-actions" style="margin: 12px 0; display:flex; gap:8px; flex-wrap:wrap;">
+        <!-- <input
+          v-model="userSearch"
+          @input="userCurrentPage=1"
+          placeholder="Search username / email"
+          aria-label="Search users"
+        />
+        <select v-model="userRole" @change="userCurrentPage=1" aria-label="Filter role">
+          <option value="all">All roles</option>
+          <option value="admin">admin</option>
+          <option value="guest">guest</option>
+        </select> -->
+
+        <!-- 导出按钮 -->
+        <!-- Users 工具条（与上方表单同款样式） -->
+<div class="users-toolbar">
+  <input
+    v-model="userSearch"
+    @input="userCurrentPage=1"
+    placeholder="Search username / email"
+    aria-label="Search users"
+  />
+  <select
+    v-model="userRole"
+    @change="userCurrentPage=1"
+    aria-label="Filter role"
+  >
+    <option value="all">All roles</option>
+    <option value="admin">admin</option>
+    <option value="guest">guest</option>
+  </select>
+
+  <div class="spacer"></div>
+
+  <button class="btn btn-export btn-sm" @click="exportUsersCSV"  :disabled="!flatUsers.length">Export CSV</button>
+  <button class="btn btn-export btn-sm" @click="exportUsersXLSX" :disabled="!flatUsers.length">Export XLSX</button>
+  <button class="btn btn-export btn-sm" @click="exportUsersPDF"  :disabled="!flatUsers.length">Export PDF</button>
+</div>
+
+      </div>
+
+      <table class="users-table">
         <thead>
           <tr>
-            <th>Username</th>
-            <th>Email</th>
-            <th>Role</th>
+            <th @click="toggleUserSort('username')" style="cursor:pointer">
+              Username <span>{{ sortIcon('username') }}</span>
+            </th>
+            <th @click="toggleUserSort('email')" style="cursor:pointer">
+              Email <span>{{ sortIcon('email') }}</span>
+            </th>
+            <th @click="toggleUserSort('role')" style="cursor:pointer">
+              Role <span>{{ sortIcon('role') }}</span>
+            </th>
             <th>Delete</th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="(user, idx) in users" :key="user.username">
+          <tr v-for="user in paginatedUsers" :key="user.username">
             <td>{{ user.username }}</td>
             <td>{{ user.email }}</td>
-            <td>{{ user.role }}</td>
+            <td>{{ user.role || 'guest' }}</td>
             <td>
-              <button @click="deleteUser(idx)" :disabled="user.role === 'admin' && user.username === 'admin'">
+              <button
+                @click="deleteUserByKey(user.username)"
+                :disabled="user.role === 'admin' && user.username === 'admin'">
                 Delete
               </button>
             </td>
           </tr>
         </tbody>
       </table>
+
+      <!-- 分页 -->
+      <div class="pagination" v-if="userTotalPages > 1" style="display:flex; gap:8px; align-items:center; margin-top:8px;">
+        <button
+          class="btn btn-small"
+          :disabled="userCurrentPage===1"
+          @click="userCurrentPage = Math.max(1, userCurrentPage - 1)">
+          Previous
+        </button>
+        <span>Page {{ userCurrentPage }} of {{ userTotalPages }}</span>
+        <button
+          class="btn btn-small"
+          :disabled="userCurrentPage===userTotalPages"
+          @click="userCurrentPage = Math.min(userTotalPages, userCurrentPage + 1)">
+          Next
+        </button>
+      </div>
+
     </div>
 
     <!-- Ratings Management Tab -->
@@ -152,13 +219,26 @@
             Refresh Data
           </button>
 
-          <button @click="exportRatingsData" class="btn btn-export">
+          <!-- <button @click="exportRatingsData" class="btn btn-export">
             Export Ratings
-          </button>
+          </button> -->
 
           <button @click="clearAllRatings" class="btn btn-danger">
             Clear All Ratings
           </button>
+
+          <button @click="exportRatingsCSV" class="btn btn-export">
+            Export CSV
+          </button>
+
+          <button @click="exportRatingsXLSX" class="btn btn-export">
+            Export XLSX
+          </button>
+
+          <button @click="exportRatingsPDF" class="btn btn-export">
+            Export PDF
+          </button>
+
         </div>
       </div>
 
@@ -301,6 +381,10 @@ import { initializeHealthcareData } from '@/utils/initData.js'
 import ChartView from '@/components/ChartView.vue'
 // import SimpleCharts from '@/components/SimpleCharts.vue'
 
+import * as XLSX from 'xlsx'
+import jsPDF from 'jspdf'
+import autoTable from 'jspdf-autotable'
+
 // Tab management
 const activeTab = ref('users')
 
@@ -327,6 +411,69 @@ const serviceNames = {
   gp: 'General Practice Services',
   specialist: 'Specialist Consultations',
   mental: 'Mental Health Services'
+}
+
+// —— Users 交互：搜索 / 角色筛选 / 排序 / 分页 —— //
+const userSearch = ref('')
+const userRole = ref('all')
+const userSortKey = ref('username')
+const userSortAsc = ref(true)
+const userCurrentPage = ref(1)
+const userItemsPerPage = 10
+
+const filteredUsers = computed(() => {
+  let arr = [...users.value]
+
+  // 角色筛选
+  if (userRole.value !== 'all') {
+    arr = arr.filter(u => (u.role || 'guest') === userRole.value)
+  }
+
+  // 搜索（用户名/邮箱）
+  if (userSearch.value) {
+    const term = userSearch.value.toLowerCase()
+    arr = arr.filter(u =>
+      (u.username || '').toLowerCase().includes(term) ||
+      (u.email || '').toLowerCase().includes(term)
+    )
+  }
+
+  // 排序
+  arr.sort((a, b) => {
+    const A = (a[userSortKey.value] ?? '').toString().toLowerCase()
+    const B = (b[userSortKey.value] ?? '').toString().toLowerCase()
+    if (A < B) return userSortAsc.value ? -1 : 1
+    if (A > B) return userSortAsc.value ?  1 : -1
+    return 0
+  })
+
+  return arr
+})
+
+const userTotalPages = computed(() =>
+  Math.ceil(filteredUsers.value.length / userItemsPerPage) || 1
+)
+
+const paginatedUsers = computed(() => {
+  const start = (userCurrentPage.value - 1) * userItemsPerPage
+  return filteredUsers.value.slice(start, start + userItemsPerPage)
+})
+
+// 用户表格相关方法
+function toggleUserSort(key) {
+  if (userSortKey.value === key) {
+    userSortAsc.value = !userSortAsc.value
+  } else {
+    userSortKey.value = key
+    userSortAsc.value = true
+  }
+}
+function sortIcon(key) {
+  return userSortKey.value === key ? (userSortAsc.value ? '▲' : '▼') : ''
+}
+function deleteUserByKey(username) {
+  const idx = users.value.findIndex(u => u.username === username)
+  if (idx > -1) deleteUser(idx)
 }
 
 // Load users (existing functionality)
@@ -385,6 +532,109 @@ function loadRatings() {
 function getUserName(rating) {
   return rating.user?.username || rating.rating?.userName || 'Unknown User'
 }
+
+function flattenRatings(arr) {
+  return (arr || []).map(r => ({
+    id: r.id,
+    service: r.service,
+    serviceName: r.serviceName,
+    overall: r.rating?.overall ?? '',
+    quality: r.rating?.quality ?? '',
+    waitTime: r.rating?.waitTime ?? '',
+    communication: r.rating?.communication ?? '',
+    facilities: r.rating?.facilities ?? '',
+    review: r.rating?.review ?? '',
+    user: typeof r.user === 'string' ? r.user : (r.user?.username ?? ''),
+    timestamp: r.timestamp
+  }))
+}
+
+function exportRatingsCSV() {
+  const rows = flattenRatings(filteredRatings.value)
+  exportCsv(rows, 'ratings.csv')
+}
+function exportRatingsXLSX() {
+  const rows = flattenRatings(filteredRatings.value)
+  const ws = XLSX.utils.json_to_sheet(rows)
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, ws, 'Ratings')
+  XLSX.writeFile(wb, 'ratings.xlsx')
+}
+function exportRatingsPDF() {
+  const rows = flattenRatings(filteredRatings.value)
+  const doc = new jsPDF()
+  const head = [Object.keys(rows[0] || { id:'', service:'', serviceName:'', overall:'', quality:'', waitTime:'', communication:'', facilities:'', review:'', user:'', timestamp:'' })]
+  const body = rows.map(r => Object.values(r))
+  autoTable(doc, { head, body })
+  doc.save('ratings.pdf')
+}
+
+function exportCsv(rows, filename) {
+  if (!rows?.length) return
+  const keys = Object.keys(rows[0])
+  const csv = [keys.join(','), ...rows.map(r => keys.map(k => JSON.stringify(r[k] ?? '')).join(','))].join('\n')
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
+// === 导出依赖（若已引入可忽略） ===
+// import * as XLSX from 'xlsx'
+// import jsPDF from 'jspdf'
+// import autoTable from 'jspdf-autotable'
+
+// === Users 扁平化（不导出密码） ===
+const flatUsers = computed(() => (users.value || []).map(u => ({
+  username: u.username || '',
+  email: u.email || '',
+  role: u.role || 'guest',
+  createdAt: u.createdAt || '',
+  lastLogin: u.lastLogin || ''
+})))
+
+// === 通用 CSV 导出小函数（仅本文件使用） ===
+function downloadCsv(rows, filename = 'data.csv') {
+  if (!rows?.length) { alert('No data to export'); return }
+  const headers = Object.keys(rows[0])
+  const esc = v => JSON.stringify(v ?? '') // 处理逗号/引号
+  const csv = [headers.join(','), ...rows.map(r => headers.map(h => esc(r[h])).join(','))].join('\n')
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url; a.download = filename; a.click()
+  URL.revokeObjectURL(url)
+}
+
+// === Users 导出：CSV / XLSX / PDF ===
+function exportUsersCSV() {
+  const rows = flatUsers.value
+  if (!rows.length) { alert('No users to export'); return }
+  downloadCsv(rows, 'users.csv')
+}
+
+function exportUsersXLSX() {
+  const rows = flatUsers.value
+  if (!rows.length) { alert('No users to export'); return }
+  const ws = XLSX.utils.json_to_sheet(rows)
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, ws, 'Users')
+  XLSX.writeFile(wb, 'users.xlsx')
+}
+
+function exportUsersPDF() {
+  const rows = flatUsers.value
+  if (!rows.length) { alert('No users to export'); return }
+  const doc = new jsPDF()
+  const head = [Object.keys(rows[0])]
+  const body = rows.map(r => Object.values(r))
+  autoTable(doc, { head, body })
+  doc.save('users.pdf')
+}
+
 
 // Computed properties for ratings
 const ratingsStats = computed(() => {
@@ -1141,4 +1391,30 @@ button[disabled] {
     flex-direction: column;
   }
 }
+
+/* 与 .add-user-form 输入框一致的视觉 */
+.users-toolbar {
+  display: flex;
+  gap: 0.7rem;
+  align-items: center;
+  margin: 0.8rem 0 1rem;
+}
+.users-toolbar .spacer { flex: 1; } /* 把导出按钮推到右边 */
+
+.users-toolbar input,
+.users-toolbar select {
+  padding: 0.4rem 0.7rem;     /* 与上方相同 */
+  border: 1px solid #aaa;     /* 与上方相同 */
+  border-radius: 4px;         /* 与上方相同 */
+  min-width: 120px;           /* 与上方相同 */
+  font-size: 0.9rem;
+  outline: none;
+  box-shadow: none;
+}
+.users-toolbar input:focus,
+.users-toolbar select:focus {
+  border-color: #1976d2;      /* 可与上方保持相同或用 #aaa */
+  box-shadow: 0 0 0 0.15rem rgba(25,118,210,.15);
+}
+
 </style>
