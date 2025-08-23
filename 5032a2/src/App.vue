@@ -59,6 +59,8 @@ import { ref, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import logo from '@/assets/logo.png'
 import loginIcon from '@/assets/login-icon.png'
+import { logout } from '@/utils/firebase'     // 调用你封装好的 signOut:contentReference[oaicite:2]{index=2}
+
 
 const router = useRouter()
 const route = useRoute()
@@ -95,19 +97,23 @@ function toggleMobileMenu() {
 function closeMobileMenu() {
   isMobileMenuOpen.value = false
 }
-function onLogout() {
-  // 清除本地存储
-  localStorage.removeItem('isLoggedIn')
-  localStorage.removeItem('currentUser')
-  localStorage.removeItem('currentRole')
+async function onLogout() {
+  try {
+    // 1) 真正退出 Firebase 会话
+    await logout()
 
-  // 🔧 新增：立即更新状态
-  updateAuthStatus()
+    // 2) 只清鉴权相关的本地键（避免误删业务数据）
+    ;['isLoggedIn','currentUser','currentRole','userEmail','firebaseUID','authProvider']
+      .forEach(k => localStorage.removeItem(k))
 
-  // 关闭移动端菜单
-  isMobileMenuOpen.value = false
-  // 使用 replace 避免回退后依然登录
-  location.reload()
+    // 3) 触发全局状态刷新（firebase.js 里也会在登出时尝试调用它:contentReference[oaicite:3]{index=3}）
+    if (window.updateAuthStatus) window.updateAuthStatus()
+
+    // 4) 不要 reload；直接离开受限页，防止守卫再放行
+    await router.replace('/login')
+  } catch (e) {
+    console.error('Logout failed:', e)
+  }
 }
 </script>
 

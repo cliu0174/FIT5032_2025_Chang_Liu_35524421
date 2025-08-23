@@ -6,7 +6,7 @@
       <div v-if="hasValidationErrors" class="validation-summary">
         <h4>Please fix the following errors:</h4>
         <ul>
-          <li v-if="validationErrors.username">{{ validationErrors.username }}</li>
+          <li v-if="validationErrors.email">{{ validationErrors.email }}</li>
           <li v-if="validationErrors.password">{{ validationErrors.password }}</li>
         </ul>
       </div>
@@ -16,27 +16,50 @@
         <p>{{ error }}</p>
       </div>
 
+      <!-- login success -->
+      <div v-if="success" class="login-success">
+        <p>{{ success }}</p>
+      </div>
+
       <!-- login form -->
       <div class="login-form">
         <h1 class="form-title">User Login</h1>
-        <form @submit.prevent="onLogin">
-          <!-- username -->
+
+        <!-- Firebase Auth Tabs -->
+        <div class="auth-tabs">
+          <button
+            @click="authMethod = 'email'"
+            :class="{ active: authMethod === 'email' }"
+            class="tab-button"
+          >
+            Email Login
+          </button>
+          <button
+            @click="authMethod = 'legacy'"
+            :class="{ active: authMethod === 'legacy' }"
+            class="tab-button"
+          >
+            Test Accounts
+          </button>
+        </div>
+
+        <!-- Firebase Email Login -->
+        <form v-if="authMethod === 'email'" @submit.prevent="onFirebaseLogin">
+          <!-- email -->
           <div class="form-group">
-            <label for="username" class="form-label">Username</label>
+            <label for="email" class="form-label">Email Address</label>
             <input
-              id="username"
-              v-model="form.username"
-              type="text"
+              id="email"
+              v-model="form.email"
+              type="email"
               class="form-control"
-              :class="{ 'error': validationErrors.username }"
-              placeholder="Enter username"
+              :class="{ 'error': validationErrors.email }"
+              placeholder="Enter your email"
               required
-              minlength="3"
-              pattern="^[A-Za-z0-9]+$"
-              @blur="validateUsername"
-              @input="clearUsernameError"
+              @blur="validateEmail"
+              @input="clearEmailError"
             />
-            <span v-if="validationErrors.username" class="field-error">{{ validationErrors.username }}</span>
+            <span v-if="validationErrors.email" class="field-error">{{ validationErrors.email }}</span>
           </div>
 
           <!-- password -->
@@ -62,19 +85,84 @@
             <button
               type="submit"
               class="btn btn-submit btn-primary w-100"
-              :disabled="!isFormValid"
-            >Login</button>
+              :disabled="!isFormValid || isLoading"
+            >
+              {{ isLoading ? 'Signing In...' : 'Sign In with Email' }}
+            </button>
+          </div>
+
+          <!-- Google Login -->
+          <div class="social-login">
+            <div class="divider">
+              <span>OR</span>
+            </div>
+            <button
+              type="button"
+              @click="onGoogleLogin"
+              class="btn btn-google w-100"
+              :disabled="isLoading"
+            >
+              <svg class="google-icon" viewBox="0 0 24 24">
+                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+              </svg>
+              {{ isLoading ? 'Please wait...' : 'Continue with Google' }}
+            </button>
           </div>
 
           <!-- register link -->
           <div class="form-footer">
-            <p>Don't have an account? <router-link to="/register" class="register-link">Register now</router-link></p>
+            <p>Don't have an account? <router-link to="/register" class="register-link">Create Account</router-link></p>
+          </div>
+        </form>
+
+        <!-- Legacy Login (Test Accounts) -->
+        <form v-if="authMethod === 'legacy'" @submit.prevent="onLegacyLogin">
+          <!-- username -->
+          <div class="form-group">
+            <label for="username" class="form-label">Username</label>
+            <input
+              id="username"
+              v-model="legacyForm.username"
+              type="text"
+              class="form-control"
+              placeholder="Enter username"
+              required
+              minlength="3"
+            />
+          </div>
+
+          <!-- password -->
+          <div class="form-group">
+            <label for="legacyPassword" class="form-label">Password</label>
+            <input
+              id="legacyPassword"
+              v-model="legacyForm.password"
+              type="password"
+              class="form-control"
+              placeholder="Enter password"
+              required
+              minlength="6"
+            />
+          </div>
+
+          <!-- actions -->
+          <div class="form-actions">
+            <button
+              type="submit"
+              class="btn btn-submit btn-secondary w-100"
+              :disabled="isLoading"
+            >
+              {{ isLoading ? 'Signing In...' : 'Sign In (Test Mode)' }}
+            </button>
           </div>
         </form>
       </div>
 
       <!-- test accounts -->
-      <div v-if="availableUsers.length" class="test-accounts">
+      <div v-if="authMethod === 'legacy' && availableUsers.length" class="test-accounts">
         <h3>Available Test Accounts</h3>
         <div class="account-cards">
           <div
@@ -91,6 +179,18 @@
           </div>
         </div>
       </div>
+
+      <!-- Connection Status -->
+      <div class="connection-status">
+        <div v-if="firebaseConnected" class="status-item connected">
+          <span class="status-dot"></span>
+          Connected to Firebase
+        </div>
+        <div v-else class="status-item disconnected">
+          <span class="status-dot"></span>
+          Firebase connection failed - using local mode
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -99,74 +199,86 @@
 import { reactive, ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { getUsers } from '@/utils/users'
+import {
+  loginWithEmail,
+  loginWithGoogle,
+  checkFirebaseConnection
+} from '@/utils/firebase'
 
 const router = useRouter()
-const form = reactive({ username: '', password: '' })
+const authMethod = ref('email')
+const isLoading = ref(false)
+const firebaseConnected = ref(false)
+
+// Firebase forms
+const form = reactive({ email: '', password: '' })
+const legacyForm = reactive({ username: '', password: '' })
+
+// Messages
 const error = ref('')
+const success = ref('')
 const availableUsers = ref([])
 
 // Validation error states
 const validationErrors = reactive({
-  username: '',
+  email: '',
   password: ''
 })
 
-// Fetch user data when component is mounted
-onMounted(() => {
+// Check Firebase connection on mount
+onMounted(async () => {
+  console.log('🔥 Checking Firebase connection...')
+  firebaseConnected.value = await checkFirebaseConnection()
+
+  if (!firebaseConnected.value) {
+    console.warn('🔥 Firebase not available, using legacy login')
+    authMethod.value = 'legacy'
+  }
+
+  // Load test accounts for legacy mode
   try {
     availableUsers.value = getUsers()
   } catch (e) {
-    // If user data cannot be retrieved, use default test accounts
     console.warn('Failed to fetch user data, using default test accounts')
     availableUsers.value = [
       { username: 'admin', password: '123456' },
-      { username: 'guest', password: 'guest123' }
+      { username: 'guest', password: 'guestguest' }
     ]
   }
 })
 
-// Computed property: check if there are validation errors
+// Computed properties
 const hasValidationErrors = computed(() => {
-  return validationErrors.username || validationErrors.password
+  return validationErrors.email || validationErrors.password
 })
 
-// Computed property: check if the form is valid
 const isFormValid = computed(() => {
-  return form.username.trim() &&
+  return form.email.trim() &&
          form.password.trim() &&
          form.password.length >= 6 &&
          !hasValidationErrors.value
 })
 
-// Username validation
-function validateUsername() {
-  // Required check
-  if (!form.username.trim()) {
-    validationErrors.username = 'Username is required'
+// Validation functions
+function validateEmail() {
+  if (!form.email.trim()) {
+    validationErrors.email = 'Email is required'
     return false
   }
-  // Length check
-  if (form.username.length < 3) {
-    validationErrors.username = 'Username must be at least 3 characters'
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  if (!emailRegex.test(form.email)) {
+    validationErrors.email = 'Please enter a valid email address'
     return false
   }
-  // Format check
-  if (!/^[A-Za-z0-9]+$/.test(form.username)) {
-    validationErrors.username = 'Username can only contain letters and numbers'
-    return false
-  }
-  validationErrors.username = ''
+  validationErrors.email = ''
   return true
 }
 
-// Password validation
 function validatePassword() {
-  // Required check
   if (!form.password.trim()) {
     validationErrors.password = 'Password is required'
     return false
   }
-  // Length check
   if (form.password.length < 6) {
     validationErrors.password = 'Password must be at least 6 characters'
     return false
@@ -175,45 +287,89 @@ function validatePassword() {
   return true
 }
 
-// Clear username error
-function clearUsernameError() {
-  if (validationErrors.username) {
-    validationErrors.username = ''
+function clearEmailError() {
+  if (validationErrors.email) {
+    validationErrors.email = ''
   }
 }
 
-// Clear password error
 function clearPasswordError() {
   if (validationErrors.password) {
     validationErrors.password = ''
   }
 }
 
-// Validate entire form
-function validateForm() {
-  const isUsernameValid = validateUsername()
-  const isPasswordValid = validatePassword()
-  return isUsernameValid && isPasswordValid
+function clearMessages() {
+  error.value = ''
+  success.value = ''
 }
 
-// Fill test account credentials
-function fillTestAccount(username, password) {
-  form.username = username
-  form.password = password
-  validationErrors.username = ''
-  validationErrors.password = ''
-  error.value = ''
-}
+// Firebase login handlers
+const onFirebaseLogin = async () => {
+  if (isLoading.value) return
 
-// Handle login
-function onLogin() {
-  // Clear previous login error
-  error.value = ''
+  clearMessages()
 
-  // Perform form validation
-  if (!validateForm()) {
-    return // If validation fails, do not proceed
+  // Validate form
+  if (!validateEmail() || !validatePassword()) {
+    return
   }
+
+  isLoading.value = true
+
+  try {
+    const result = await loginWithEmail(form.email, form.password)
+
+    if (result.success) {
+      success.value = `Welcome back!`
+
+      // Small delay to show success message
+      setTimeout(() => {
+        router.push('/')
+      }, 1500)
+    } else {
+      error.value = result.error
+    }
+  } catch (err) {
+    console.error('Login error:', err)
+    error.value = 'An unexpected error occurred. Please try again.'
+  } finally {
+    isLoading.value = false
+  }
+}
+
+const onGoogleLogin = async () => {
+  if (isLoading.value) return
+
+  clearMessages()
+  isLoading.value = true
+
+  try {
+    const result = await loginWithGoogle()
+
+    if (result.success) {
+      success.value = 'Google login successful!'
+
+      setTimeout(() => {
+        router.push('/')
+      }, 1500)
+    } else {
+      error.value = result.error
+    }
+  } catch (err) {
+    console.error('Google login error:', err)
+    error.value = 'Google login failed. Please try again.'
+  } finally {
+    isLoading.value = false
+  }
+}
+
+// Legacy login handler
+const onLegacyLogin = () => {
+  if (isLoading.value) return
+
+  clearMessages()
+  isLoading.value = true
 
   try {
     // Get user data
@@ -221,32 +377,39 @@ function onLogin() {
 
     // Find matching user
     const match = users.find(
-      u => u.username === form.username && u.password === form.password
+      u => u.username === legacyForm.username && u.password === legacyForm.password
     )
 
     if (match) {
       // Login success
       localStorage.setItem('isLoggedIn', 'true')
-      localStorage.setItem('currentUser', form.username)
+      localStorage.setItem('currentUser', legacyForm.username)
       localStorage.setItem('currentRole', match.role)
-      // location.reload()  // 登录后刷新页面
+      localStorage.setItem('authProvider', 'legacy')
 
+      success.value = `Welcome back, ${legacyForm.username}!`
 
-      // Welcome message
-      alert(`Welcome back, ${form.username}!`)
-
-      // Redirect to home page
-      router.replace('/')
+      setTimeout(() => {
+        router.push('/')
+      }, 1500)
     } else {
       error.value = 'Incorrect username or password'
     }
   } catch (e) {
     error.value = 'Login system error. Please try again later.'
-    console.error('Login error:', e)
+    console.error('Legacy login error:', e)
+  } finally {
+    isLoading.value = false
   }
 }
-</script>
 
+// Fill test account credentials
+function fillTestAccount(username, password) {
+  legacyForm.username = username
+  legacyForm.password = password
+  clearMessages()
+}
+</script>
 
 <style scoped>
 .app-container {
@@ -257,11 +420,7 @@ function onLogin() {
   justify-content: center;
   padding: 2rem 1rem;
   position: relative;
-
-  /* 渐变背景作为备选 */
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-
-  /* 背景图片设置 */
   background-image: url('@/assets/bkg1.png');
   background-size: cover;
   background-position: center;
@@ -269,7 +428,6 @@ function onLogin() {
   background-attachment: fixed;
 }
 
-/* 背景遮罩层 */
 .app-container::before {
   content: '';
   position: absolute;
@@ -281,24 +439,32 @@ function onLogin() {
   z-index: 1;
 }
 
-/* 确保内容在遮罩层之上 */
 .main-content {
   position: relative;
   z-index: 2;
-}
-
-.main-content {
   width: 100%;
   max-width: 500px;
 }
 
-.validation-summary {
+/* Messages */
+.validation-summary, .login-error {
   background: #f8d7da;
   border: 1px solid #f5c6cb;
   border-radius: 6px;
   padding: 1rem;
   margin-bottom: 1rem;
   color: #721c24;
+}
+
+.login-success {
+  background: #d4edda;
+  border: 1px solid #c3e6cb;
+  border-radius: 6px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  color: #155724;
+  text-align: center;
+  font-weight: 500;
 }
 
 .validation-summary h4 {
@@ -316,21 +482,7 @@ function onLogin() {
   margin-bottom: 0.25rem;
 }
 
-.login-error {
-  background: #f8d7da;
-  border: 1px solid #f5c6cb;
-  border-radius: 6px;
-  padding: 1rem;
-  margin-bottom: 1rem;
-  color: #721c24;
-  text-align: center;
-}
-
-.login-error p {
-  margin: 0;
-  font-weight: 500;
-}
-
+/* Form Container */
 .login-form {
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(10px);
@@ -349,6 +501,36 @@ function onLogin() {
   font-weight: 600;
 }
 
+/* Auth Tabs */
+.auth-tabs {
+  display: flex;
+  margin-bottom: 2rem;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #dee2e6;
+}
+
+.tab-button {
+  flex: 1;
+  padding: 0.75rem;
+  border: none;
+  background: #f8f9fa;
+  color: #6c757d;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-weight: 500;
+}
+
+.tab-button.active {
+  background: #007bff;
+  color: white;
+}
+
+.tab-button:hover:not(.active) {
+  background: #e9ecef;
+}
+
+/* Form Elements */
 .form-group {
   margin-bottom: 1.5rem;
 }
@@ -390,6 +572,7 @@ function onLogin() {
   display: block;
 }
 
+/* Buttons */
 .form-actions {
   margin-top: 2rem;
   margin-bottom: 1.5rem;
@@ -403,11 +586,15 @@ function onLogin() {
   font-weight: 500;
   cursor: pointer;
   transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
 }
 
 .btn-submit {
   background: var(--primary-color, #007bff);
-  color: var(--text-on-primary, white);
+  color: white;
 }
 
 .btn-submit:hover:not(:disabled) {
@@ -416,16 +603,76 @@ function onLogin() {
   box-shadow: 0 4px 12px rgba(0,123,255,0.3);
 }
 
-.btn-submit:disabled {
+.btn-secondary {
+  background: #6c757d;
+  color: white;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: #5a6268;
+  transform: translateY(-1px);
+}
+
+.btn:disabled {
   background: #6c757d;
   cursor: not-allowed;
   transform: none;
+  opacity: 0.7;
 }
 
 .w-100 {
   width: 100%;
 }
 
+/* Google Login */
+.social-login {
+  margin-top: 1.5rem;
+}
+
+.divider {
+  text-align: center;
+  margin: 1rem 0;
+  position: relative;
+  color: #6c757d;
+}
+
+.divider::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: #dee2e6;
+  z-index: 1;
+}
+
+.divider span {
+  background: rgba(255, 255, 255, 0.95);
+  padding: 0 1rem;
+  position: relative;
+  z-index: 2;
+  font-size: 0.8rem;
+}
+
+.btn-google {
+  background: #4285f4;
+  color: white;
+  border: 1px solid #4285f4;
+}
+
+.btn-google:hover:not(:disabled) {
+  background: #357ae8;
+  border-color: #357ae8;
+  transform: translateY(-1px);
+}
+
+.google-icon {
+  width: 20px;
+  height: 20px;
+}
+
+/* Footer */
 .form-footer {
   text-align: center;
   padding-top: 1rem;
@@ -448,6 +695,7 @@ function onLogin() {
   text-decoration: underline;
 }
 
+/* Test Accounts */
 .test-accounts {
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(10px);
@@ -455,6 +703,7 @@ function onLogin() {
   border-radius: 12px;
   box-shadow: 0 8px 32px rgba(0,0,0,0.3);
   border: 1px solid rgba(255, 255, 255, 0.2);
+  margin-bottom: 1rem;
 }
 
 .test-accounts h3 {
@@ -500,6 +749,43 @@ function onLogin() {
   font-size: 0.8rem;
 }
 
+/* Connection Status */
+.connection-status {
+  margin-top: 1rem;
+  display: flex;
+  justify-content: center;
+}
+
+.status-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.status-item.connected {
+  background: rgba(40, 167, 69, 0.1);
+  color: #28a745;
+  border: 1px solid rgba(40, 167, 69, 0.2);
+}
+
+.status-item.disconnected {
+  background: rgba(220, 53, 69, 0.1);
+  color: #dc3545;
+  border: 1px solid rgba(220, 53, 69, 0.2);
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+/* Responsive */
 @media (max-width: 768px) {
   .app-container {
     padding: 1rem;
@@ -511,6 +797,24 @@ function onLogin() {
 
   .account-cards {
     grid-template-columns: 1fr;
+  }
+
+  .auth-tabs {
+    flex-direction: column;
+  }
+
+  .tab-button {
+    border-radius: 0;
+  }
+
+  .tab-button:first-child {
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+  }
+
+  .tab-button:last-child {
+    border-bottom-left-radius: 8px;
+    border-bottom-right-radius: 8px;
   }
 }
 

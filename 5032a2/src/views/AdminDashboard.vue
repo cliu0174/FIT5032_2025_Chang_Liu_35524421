@@ -1,6 +1,9 @@
 <template>
   <div class="dashboard-container">
     <!-- Tab Navigation -->
+    <ChartView title="Healthcare Analytics Dashboard" />
+    <!-- <SimpleCharts title="Healthcare Analytics Dashboard" /> -->
+
     <div class="tab-navigation">
       <button
         @click="activeTab = 'users'"
@@ -295,6 +298,8 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { initializeHealthcareData } from '@/utils/initData.js'
+import ChartView from '@/components/ChartView.vue'
+// import SimpleCharts from '@/components/SimpleCharts.vue'
 
 // Tab management
 const activeTab = ref('users')
