@@ -572,7 +572,7 @@ function fillTestAccount(username, password) {
   display: block;
 }
 
-/* Buttons */
+/* Buttons - 更友好的绿色系配色 */
 .form-actions {
   margin-top: 2rem;
   margin-bottom: 1.5rem;
@@ -581,43 +581,54 @@ function fillTestAccount(username, password) {
 .btn {
   padding: 0.75rem 1.2rem;
   border: none;
-  border-radius: 4px;
+  border-radius: 6px;
   font-size: 0.9rem;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .btn-submit {
-  background: var(--primary-color, #007bff);
+  background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
   color: white;
+  box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
 }
 
 .btn-submit:hover:not(:disabled) {
-  background: var(--primary-hover, #0056b3);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0,123,255,0.3);
+  background: linear-gradient(135deg, #218838 0%, #1ea085 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(40, 167, 69, 0.4);
+}
+
+.btn-submit:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
 }
 
 .btn-secondary {
-  background: #6c757d;
+  background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%);
   color: white;
+  box-shadow: 0 4px 15px rgba(108, 117, 125, 0.3);
 }
 
 .btn-secondary:hover:not(:disabled) {
-  background: #5a6268;
-  transform: translateY(-1px);
+  background: linear-gradient(135deg, #5a6268 0%, #495057 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(108, 117, 125, 0.4);
 }
 
 .btn:disabled {
-  background: #6c757d;
+  background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%);
   cursor: not-allowed;
   transform: none;
-  opacity: 0.7;
+  opacity: 0.6;
+  box-shadow: none;
 }
 
 .w-100 {
@@ -656,15 +667,16 @@ function fillTestAccount(username, password) {
 }
 
 .btn-google {
-  background: #4285f4;
+  background: linear-gradient(135deg, #4285f4 0%, #357ae8 100%);
   color: white;
-  border: 1px solid #4285f4;
+  border: none;
+  box-shadow: 0 4px 15px rgba(66, 133, 244, 0.3);
 }
 
 .btn-google:hover:not(:disabled) {
-  background: #357ae8;
-  border-color: #357ae8;
-  transform: translateY(-1px);
+  background: linear-gradient(135deg, #357ae8 0%, #2a6bd9 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(66, 133, 244, 0.4);
 }
 
 .google-icon {
@@ -686,12 +698,14 @@ function fillTestAccount(username, password) {
 }
 
 .register-link {
-  color: #007bff;
+  color: #28a745;
   text-decoration: none;
   font-weight: 500;
+  transition: all 0.2s ease;
 }
 
 .register-link:hover {
+  color: #218838;
   text-decoration: underline;
 }
 
@@ -730,10 +744,10 @@ function fillTestAccount(username, password) {
 }
 
 .account-card:hover {
-  border-color: #007bff;
-  background: #e3f2fd;
+  border-color: #28a745;
+  background: #f1f8e9;
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0,123,255,0.15);
+  box-shadow: 0 4px 15px rgba(40, 167, 69, 0.2);
 }
 
 .account-info strong {

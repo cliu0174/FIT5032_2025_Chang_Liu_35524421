@@ -1,254 +1,303 @@
 <template>
   <div class="appointment-page">
-    <div class="appointment-container">
-      <!-- Left Side - Appointment Info -->
-      <div class="appointment-info">
-        <h1 class="appointment-title">Book Appointment</h1>
+    <!-- 视图切换器 -->
+    <div class="view-switcher">
+      <button
+        @click="currentView = 'calendar'"
+        :class="{ active: currentView === 'calendar' }"
+        class="view-button"
+      >
+        📅 Calendar View
+      </button>
+      <button
+        @click="currentView = 'form'"
+        :class="{ active: currentView === 'form' }"
+        class="view-button"
+      >
+        📝 Book Appointment
+      </button>
+    </div>
 
-        <div class="appointment-details">
-          <p class="info-text">
-            Schedule your appointment online or call <strong>(03) 9827 5500</strong> for immediate assistance
-          </p>
+    <!-- Calendar视图 -->
+    <AppointmentCalendar v-if="currentView === 'calendar'" />
 
-          <div class="info-section">
-            <h3>Available Services:</h3>
-            <ul class="services-list">
-              <li>• General Practice Consultations</li>
-              <li>• Specialist Medical Services</li>
-              <li>• Mental Health Support</li>
-              <li>• Health Check-ups</li>
-              <li>• Preventive Care</li>
+    <!-- 原有的表单视图 -->
+    <div v-if="currentView === 'form'">
+      <div class="appointment-container">
+        <!-- Left Side - Appointment Info -->
+        <div class="appointment-info">
+          <h1 class="appointment-title">Book Appointment</h1>
+
+          <div class="appointment-details">
+            <p class="info-text">
+              Schedule your appointment online or call <strong>(03) 9827 5500</strong> for immediate assistance
+            </p>
+
+            <div class="info-section">
+              <h3>Available Services:</h3>
+              <ul class="services-list">
+                <li>• General Practice Consultations</li>
+                <li>• Specialist Medical Services</li>
+                <li>• Mental Health Support</li>
+                <li>• Health Check-ups</li>
+                <li>• Preventive Care</li>
+              </ul>
+            </div>
+
+            <div class="info-section">
+              <h3>Clinic Hours:</h3>
+              <div class="hours-info">
+                <div class="hour-item">
+                  <span class="day">Monday - Friday:</span>
+                  <span class="time">8:00 AM - 6:00 PM</span>
+                </div>
+                <div class="hour-item">
+                  <span class="day">Saturday:</span>
+                  <span class="time">9:00 AM - 2:00 PM</span>
+                </div>
+                <div class="hour-item">
+                  <span class="day">Sunday:</span>
+                  <span class="time">10:00 AM - 6:00 PM</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="info-section">
+              <h3>Location:</h3>
+              <address>
+                South Yarra Medical Center<br>
+                PO Box 520<br>
+                South Yarra VIC 3141<br>
+                Melbourne, Australia
+              </address>
+            </div>
+          </div>
+
+          <!-- Important Notes -->
+          <div class="notes-card">
+            <h4>Important Notes:</h4>
+            <ul class="notes-list">
+              <li>Please arrive 15 minutes early</li>
+              <li>Bring your Medicare card and ID</li>
+              <li>Cancellations require 24hrs notice</li>
+              <li>Emergency? Call (03) 9827 5555</li>
             </ul>
           </div>
-
-          <div class="info-section">
-            <h3>Clinic Hours:</h3>
-            <div class="hours-info">
-              <div class="hour-item">
-                <span class="day">Monday - Friday:</span>
-                <span class="time">8:00 AM - 6:00 PM</span>
-              </div>
-              <div class="hour-item">
-                <span class="day">Saturday:</span>
-                <span class="time">9:00 AM - 2:00 PM</span>
-              </div>
-              <div class="hour-item">
-                <span class="day">Sunday:</span>
-                <span class="time">Closed</span>
-              </div>
-            </div>
-          </div>
-
-          <div class="info-section">
-            <h3>Location:</h3>
-            <address>
-              South Yarra Medical Center<br>
-              PO Box 520<br>
-              South Yarra VIC 3141<br>
-              Melbourne, Australia
-            </address>
-          </div>
         </div>
 
-        <!-- Important Notes -->
-        <div class="notes-card">
-          <h4>Important Notes:</h4>
-          <ul class="notes-list">
-            <li>Please arrive 15 minutes early</li>
-            <li>Bring your Medicare card and ID</li>
-            <li>Cancellations require 24hrs notice</li>
-            <li>Emergency? Call (03) 9827 5555</li>
-          </ul>
-        </div>
-      </div>
-
-      <!-- Right Side - Appointment Form -->
-      <div class="appointment-form-section">
-        <form @submit.prevent="submitAppointment" class="appointment-form">
-          <!-- Service Selection -->
-          <div class="form-group">
-            <label for="service">Service Type *</label>
-            <select
-              id="service"
-              v-model="appointment.service"
-              required
-              class="form-select"
-              @change="updateDoctorsList"
-            >
-              <option value="">Select a service</option>
-              <option value="gp">General Practice</option>
-              <option value="specialist">Specialist Consultation</option>
-              <option value="mental">Mental Health Services</option>
-              <option value="checkup">Health Check-up</option>
-            </select>
-          </div>
-
-          <!-- Doctor Selection -->
-          <div class="form-group" v-if="appointment.service">
-            <label for="doctor">Preferred Doctor</label>
-            <select
-              id="doctor"
-              v-model="appointment.doctor"
-              class="form-select"
-            >
-              <option value="">Any available doctor</option>
-              <option
-                v-for="doctor in availableDoctors"
-                :key="doctor.id"
-                :value="doctor.id"
-              >
-                {{ doctor.name }} - {{ doctor.specialty }}
-              </option>
-            </select>
-          </div>
-
-          <!-- Date and Time Selection -->
-          <div class="form-row">
+        <!-- Right Side - Appointment Form -->
+        <div class="appointment-form-section">
+          <form @submit.prevent="submitAppointment" class="appointment-form">
+            <!-- Service Selection -->
             <div class="form-group">
-              <label for="date">Preferred Date *</label>
-              <input
-                type="date"
-                id="date"
-                v-model="appointment.date"
-                required
-                class="form-input"
-                :min="minDate"
-                :max="maxDate"
-                @change="updateAvailableSlots"
-              />
-            </div>
-
-            <div class="form-group">
-              <label for="time">Preferred Time *</label>
+              <label for="service">Service Type *</label>
               <select
-                id="time"
-                v-model="appointment.time"
+                id="service"
+                v-model="appointment.service"
                 required
                 class="form-select"
-                :disabled="!appointment.date"
+                @change="updateDoctorsList"
               >
-                <option value="">Select time</option>
+                <option value="">Select a service</option>
+                <option value="gp">General Practice</option>
+                <option value="specialist">Specialist Consultation</option>
+                <option value="mental">Mental Health Services</option>
+                <option value="checkup">Health Check-up</option>
+              </select>
+            </div>
+
+            <!-- Doctor Selection -->
+            <div class="form-group" v-if="appointment.service">
+              <label for="doctor">Preferred Doctor</label>
+              <select
+                id="doctor"
+                v-model="appointment.doctor"
+                class="form-select"
+                @change="updateAvailableSlots"
+              >
+                <option value="">Any available doctor</option>
                 <option
-                  v-for="slot in availableTimeSlots"
-                  :key="slot.value"
-                  :value="slot.value"
-                  :disabled="!slot.available"
+                  v-for="doctor in availableDoctors"
+                  :key="doctor.id"
+                  :value="doctor.id"
                 >
-                  {{ slot.display }} {{ slot.available ? '' : '(Booked)' }}
+                  {{ doctor.name }} - {{ doctor.specialty }}
                 </option>
               </select>
             </div>
-          </div>
 
-          <!-- Patient Information -->
-          <div class="form-row">
+            <!-- Date and Time Selection -->
+            <div class="form-row">
+              <div class="form-group">
+                <label for="date">Preferred Date *</label>
+                <input
+                  type="date"
+                  id="date"
+                  v-model="appointment.date"
+                  required
+                  class="form-input"
+                  :min="minDate"
+                  :max="maxDate"
+                  @change="updateAvailableSlots"
+                />
+              </div>
+
+              <div class="form-group">
+                <label for="time">Preferred Time *</label>
+                <div class="time-select-wrapper">
+                  <select
+                    id="time"
+                    v-model="appointment.time"
+                    required
+                    class="form-select"
+                    :disabled="!appointment.date"
+                  >
+                    <option value="">Select time</option>
+                    <option
+                      v-for="slot in availableTimeSlots"
+                      :key="slot.value"
+                      :value="slot.value"
+                      :disabled="!slot.available"
+                      :style="{ color: slot.available ? '#333' : '#999' }"
+                    >
+                      {{ slot.display }}{{ slot.available ? '' : ' (Booked)' }}
+                    </option>
+                  </select>
+                  <button
+                    type="button"
+                    @click="updateAvailableSlots"
+                    class="refresh-times-btn"
+                    :disabled="!appointment.date"
+                    title="Refresh available times"
+                  >
+                    🔄
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Patient Information -->
+            <div class="form-row">
+              <div class="form-group">
+                <label for="firstName">First Name *</label>
+                <input
+                  type="text"
+                  id="firstName"
+                  v-model="appointment.firstName"
+                  required
+                  class="form-input"
+                  placeholder="Enter first name"
+                />
+              </div>
+
+              <div class="form-group">
+                <label for="lastName">Last Name *</label>
+                <input
+                  type="text"
+                  id="lastName"
+                  v-model="appointment.lastName"
+                  required
+                  class="form-input"
+                  placeholder="Enter last name"
+                />
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="email">Email *</label>
+                <input
+                  type="email"
+                  id="email"
+                  v-model="appointment.email"
+                  required
+                  class="form-input"
+                  placeholder="Enter email address"
+                />
+              </div>
+
+              <div class="form-group">
+                <label for="phone">Phone Number *</label>
+                <input
+                  type="tel"
+                  id="phone"
+                  v-model="appointment.phone"
+                  required
+                  class="form-input"
+                  placeholder="Enter phone number"
+                />
+              </div>
+            </div>
+
             <div class="form-group">
-              <label for="firstName">First Name *</label>
+              <label for="medicare">Medicare Number</label>
               <input
                 type="text"
-                id="firstName"
-                v-model="appointment.firstName"
-                required
+                id="medicare"
+                v-model="appointment.medicare"
                 class="form-input"
+                placeholder="Optional - for faster check-in"
               />
             </div>
 
+            <!-- Reason for Visit -->
             <div class="form-group">
-              <label for="lastName">Last Name *</label>
-              <input
-                type="text"
-                id="lastName"
-                v-model="appointment.lastName"
+              <label for="reason">Reason for Visit *</label>
+              <textarea
+                id="reason"
+                v-model="appointment.reason"
+                rows="4"
                 required
-                class="form-input"
-              />
+                class="form-textarea"
+                placeholder="Please describe your symptoms or reason for the appointment..."
+              ></textarea>
             </div>
-          </div>
 
-          <div class="form-row">
+            <!-- Additional Notes -->
             <div class="form-group">
-              <label for="email">Email *</label>
-              <input
-                type="email"
-                id="email"
-                v-model="appointment.email"
-                required
-                class="form-input"
-              />
+              <label for="notes">Additional Notes</label>
+              <textarea
+                id="notes"
+                v-model="appointment.notes"
+                rows="3"
+                class="form-textarea"
+                placeholder="Any additional information or special requests..."
+              ></textarea>
             </div>
 
+            <!-- Urgent Checkbox -->
             <div class="form-group">
-              <label for="phone">Phone Number *</label>
-              <input
-                type="tel"
-                id="phone"
-                v-model="appointment.phone"
-                required
-                class="form-input"
-              />
+              <label class="checkbox-label">
+                <input
+                  type="checkbox"
+                  v-model="appointment.urgent"
+                  class="form-checkbox"
+                />
+                <span class="checkbox-text">This is an urgent appointment</span>
+              </label>
             </div>
-          </div>
 
-          <div class="form-group">
-            <label for="medicare">Medicare Number</label>
-            <input
-              type="text"
-              id="medicare"
-              v-model="appointment.medicare"
-              class="form-input"
-              placeholder="Optional - for faster check-in"
-            />
-          </div>
-
-          <!-- Reason for Visit -->
-          <div class="form-group">
-            <label for="reason">Reason for Visit *</label>
-            <textarea
-              id="reason"
-              v-model="appointment.reason"
-              rows="4"
-              required
-              class="form-textarea"
-              placeholder="Please describe your symptoms or reason for the appointment..."
-            ></textarea>
-          </div>
-
-          <!-- Additional Notes -->
-          <div class="form-group">
-            <label for="notes">Additional Notes</label>
-            <textarea
-              id="notes"
-              v-model="appointment.notes"
-              rows="3"
-              class="form-textarea"
-              placeholder="Any additional information or special requests..."
-            ></textarea>
-          </div>
-
-          <!-- Urgent Checkbox -->
-          <div class="form-group">
-            <label class="checkbox-label">
-              <input
-                type="checkbox"
-                v-model="appointment.urgent"
-                class="form-checkbox"
-              />
-              <span class="checkbox-text">This is an urgent appointment</span>
-            </label>
-          </div>
-
-          <!-- Submit Button -->
-          <button type="submit" class="submit-button" :disabled="isSubmitting">
-            {{ isSubmitting ? 'Booking...' : 'Book Appointment' }}
-          </button>
-        </form>
+            <!-- Submit Button -->
+            <button type="submit" class="submit-button" :disabled="isSubmitting">
+              {{ isSubmitting ? 'Booking...' : 'Book Appointment' }}
+            </button>
+          </form>
+        </div>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { reactive, ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+import AppointmentCalendar from './AppointmentCalendar.vue'
+import { appointmentManager } from '@/utils/appointmentData.js'
+
+const router = useRouter()
+
+// 添加视图状态
+const currentView = ref('calendar') // 默认显示日历视图
 
 // Form data
 const appointment = ref({
@@ -306,7 +355,7 @@ const maxDate = computed(() => {
   return maxDate.toISOString().split('T')[0]
 })
 
-// Generate time slots
+// 🔧 修改后的时间段生成函数 - 基于真实数据
 const generateTimeSlots = () => {
   const slots = []
   const times = [
@@ -315,16 +364,35 @@ const generateTimeSlots = () => {
     '16:00', '16:30', '17:00', '17:30'
   ]
 
+  if (!appointment.value.date) {
+    // 如果没有选择日期，返回所有时间段但标记为不可用
+    return times.map(time => ({
+      value: time,
+      display: convertTo12Hour(time),
+      available: false
+    }))
+  }
+
+  // 获取该日期已被预约的时间
+  const bookedTimes = appointmentManager.getBookedTimes(
+    appointment.value.date,
+    appointment.value.doctor || null
+  )
+
+  console.log('Generating time slots for:', appointment.value.date, appointment.value.doctor)
+  console.log('Booked times:', bookedTimes)
+
   times.forEach(time => {
-    // Randomly mark some slots as unavailable for demo
-    const available = Math.random() > 0.3
+    const isBooked = bookedTimes.includes(time)
+
     slots.push({
       value: time,
       display: convertTo12Hour(time),
-      available: available
+      available: !isBooked
     })
   })
 
+  console.log('Generated slots:', slots)
   return slots
 }
 
@@ -344,10 +412,18 @@ const updateDoctorsList = () => {
     availableDoctors.value = []
   }
   appointment.value.doctor = '' // Reset doctor selection
+
+  // 当医生改变时，重新检查时间段可用性
+  if (appointment.value.date) {
+    updateAvailableSlots()
+  }
 }
 
+// 🔧 修改后的时间段更新函数
 const updateAvailableSlots = () => {
   if (appointment.value.date) {
+    // 重新从数据管理器获取最新数据
+    appointmentManager.reloadFromStorage()
     availableTimeSlots.value = generateTimeSlots()
   } else {
     availableTimeSlots.value = []
@@ -355,36 +431,37 @@ const updateAvailableSlots = () => {
   appointment.value.time = '' // Reset time selection
 }
 
+// 🔧 修改后的提交函数
 const submitAppointment = async () => {
   if (isSubmitting.value) return
 
   isSubmitting.value = true
 
   try {
-    // Create appointment object
-    const appointmentData = {
-      id: Date.now().toString(),
-      ...appointment.value,
-      status: 'pending',
-      createdAt: new Date().toISOString(),
-      appointmentDate: `${appointment.value.date} ${appointment.value.time}`
+    // 再次检查时间冲突（基于最新数据）
+    appointmentManager.reloadFromStorage()
+    if (appointmentManager.checkConflict(appointment.value)) {
+      alert('Time slot conflict! This time is already booked. Please choose another time.')
+      // 刷新时间段显示
+      updateAvailableSlots()
+      return
     }
 
-    // Save to localStorage
-    const existingAppointments = JSON.parse(localStorage.getItem('healthcareAppointments') || '[]')
-    existingAppointments.unshift(appointmentData)
-    localStorage.setItem('healthcareAppointments', JSON.stringify(existingAppointments))
+    // 使用统一数据管理器添加预约
+    const newAppointment = appointmentManager.addAppointment(appointment.value)
+    console.log('New appointment created:', newAppointment)
 
-    // Show success message
+    // 显示成功消息
     alert(`Appointment booked successfully!
 
+Patient: ${appointment.value.firstName} ${appointment.value.lastName}
 Date: ${appointment.value.date}
 Time: ${convertTo12Hour(appointment.value.time)}
-Service: ${appointment.value.service}
+Service: ${getServiceName(appointment.value.service)}
 
 You will receive a confirmation email shortly.`)
 
-    // Reset form
+    // 重置表单
     appointment.value = {
       service: '',
       doctor: '',
@@ -400,7 +477,7 @@ You will receive a confirmation email shortly.`)
       urgent: false
     }
 
-    // Reset dependent fields
+    // 重置依赖字段
     availableDoctors.value = []
     availableTimeSlots.value = []
 
@@ -412,24 +489,71 @@ You will receive a confirmation email shortly.`)
   }
 }
 
+// 🆕 辅助函数
+const getServiceName = (service) => {
+  const names = {
+    gp: 'General Practice',
+    specialist: 'Specialist Consultation',
+    mental: 'Mental Health Services',
+    checkup: 'Health Check-up'
+  }
+  return names[service] || 'Appointment'
+}
+
 onMounted(() => {
   console.log('Appointment page loaded')
+  // 页面加载时从存储器加载最新数据
+  appointmentManager.reloadFromStorage()
 })
 </script>
 
 <style scoped>
+/* 视图切换器样式 */
+.view-switcher {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  padding: 2rem;
+  background: #f8f9fa;
+}
+
+.view-button {
+  padding: 0.75rem 2rem;
+  border: 2px solid #dee2e6;
+  background: white;
+  color: #6c757d;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.view-button.active {
+  background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+  color: white;
+  border-color: #28a745;
+}
+
+.view-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+/* 原有样式 */
 .appointment-page {
   min-height: 100vh;
   background: white;
-  padding: 2rem 1rem;
+  padding: 0;
   display: flex;
-  align-items: center;
-  justify-content: center;
+  flex-direction: column;
+  font-family: Arial, sans-serif;
+  font-weight: normal;
 }
 
 .appointment-container {
   max-width: 1200px;
   width: 100%;
+  margin: 0 auto;
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 0;
@@ -437,8 +561,6 @@ onMounted(() => {
   border-radius: 16px;
   overflow: hidden;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
-  font-family: Arial, sans-serif;
-  font-weight: normal;
 }
 
 /* Left Side - Appointment Info */
@@ -627,6 +749,38 @@ onMounted(() => {
   cursor: not-allowed;
 }
 
+/* 时间选择增强 */
+.time-select-wrapper {
+  display: flex;
+  gap: 0.5rem;
+  align-items: stretch;
+}
+
+.time-select-wrapper .form-select {
+  flex: 1;
+}
+
+.refresh-times-btn {
+  padding: 0 0.75rem;
+  border: 2px solid #d1c4d1;
+  border-radius: 8px;
+  background: white;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 0.9rem;
+  color: #333;
+}
+
+.refresh-times-btn:hover:not(:disabled) {
+  background: #f8f9fa;
+  border-color: #8b7ba8;
+}
+
+.refresh-times-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .checkbox-label {
   display: flex;
   align-items: center;
@@ -648,7 +802,7 @@ onMounted(() => {
 
 .submit-button {
   width: 100%;
-  background: linear-gradient(135deg, #6b4c94, #5d4e75);
+  background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
   color: white;
   border: none;
   padding: 1rem 2rem;
@@ -663,9 +817,9 @@ onMounted(() => {
 }
 
 .submit-button:hover:not(:disabled) {
-  background: linear-gradient(135deg, #5d4e75, #4a4a4a);
+  background: linear-gradient(135deg, #218838 0%, #1ea085 100%);
   transform: translateY(-2px);
-  box-shadow: 0 4px 15px rgba(107, 76, 148, 0.3);
+  box-shadow: 0 8px 25px rgba(40, 167, 69, 0.4);
 }
 
 .submit-button:disabled {
@@ -678,7 +832,6 @@ onMounted(() => {
 @media (max-width: 968px) {
   .appointment-container {
     grid-template-columns: 1fr;
-    gap: 0;
   }
 
   .appointment-info,
@@ -697,7 +850,7 @@ onMounted(() => {
 }
 
 @media (max-width: 768px) {
-  .appointment-page {
+  .view-switcher {
     padding: 1rem;
   }
 
@@ -727,6 +880,10 @@ onMounted(() => {
     flex-direction: column;
     align-items: flex-start;
     gap: 0.25rem;
+  }
+
+  .time-select-wrapper {
+    flex-direction: column;
   }
 }
 

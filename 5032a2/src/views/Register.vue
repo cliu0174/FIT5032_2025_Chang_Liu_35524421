@@ -1354,15 +1354,25 @@ const onLocalRegister = () => {
 }
 
 .btn-submit {
-  background: var(--primary-color, #007bff);
+  background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
   color: white;
   flex: 1;
+  box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
 .btn-submit:hover:not(:disabled) {
-  background: var(--primary-hover, #0056b3);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0,123,255,0.3);
+  background: linear-gradient(135deg, #218838 0%, #1ea085 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(40, 167, 69, 0.4);
+}
+
+.btn-submit:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
 }
 
 .btn-secondary {

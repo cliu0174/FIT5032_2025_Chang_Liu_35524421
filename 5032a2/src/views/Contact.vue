@@ -85,7 +85,7 @@
             <div class="location-details">
               <p><strong>South Yarra Medical Center</strong></p>
               <p>South Yarra VIC 3141</p>
-              <p class="phone-info">Phone: (03) 9827 5500</p>
+              <p class="phone-info">Phone: (61) 0466 261 394</p>
               <p v-if="distanceInfo" class="distance-info">{{ distanceInfo }}</p>
             </div>
           </div>
@@ -321,7 +321,7 @@ const initMap = async () => {
         <div style="padding: 12px; font-family: Arial, sans-serif;">
           <h4 style="margin: 0 0 8px 0; color: #333;">South Yarra Medical Center</h4>
           <p style="margin: 4px 0; color: #666;">South Yarra VIC 3141</p>
-          <p style="margin: 4px 0; color: #666;"><strong>Phone:</strong> (03) 9827 5500</p>
+          <p style="margin: 4px 0; color: #666;"><strong>Phone:</strong> (61) 0466 261 394</p>
           <p style="margin: 8px 0 0 0; font-size: 12px; color: #888;">Click "Get Directions" for navigation</p>
         </div>
       `
