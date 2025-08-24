@@ -456,6 +456,26 @@
       </div>
     </div>
   </div>
+
+  <div class="api-demo" style="margin:1rem 0;padding:1rem;border:1px dashed #ddd;border-radius:8px;">
+    <h3 style="margin:0 0 .5rem 0;">Cloud Functions Demo</h3>
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.5rem;">
+      <button class="btn btn-export" @click="callEcho">Call /api/echo</button>
+      <button class="btn btn-export" @click="callSummary">Call /api/summary</button>
+    </div>
+
+    <div v-if="apiErr" style="color:#dc3545;margin:.5rem 0;">❌ {{ apiErr }}</div>
+
+    <div v-if="echoResp" style="background:#f8f9fa;padding:.5rem;border-radius:6px;margin:.25rem 0;">
+      <strong>/api/echo</strong>
+      <pre style="margin:.25rem 0;white-space:pre-wrap;">{{ echoResp }}</pre>
+    </div>
+
+    <div v-if="summaryResp" style="background:#f8f9fa;padding:.5rem;border-radius:6px;margin:.25rem 0;">
+      <strong>/api/summary</strong>
+      <pre style="margin:.25rem 0;white-space:pre-wrap;">{{ summaryResp }}</pre>
+    </div>
+  </div>
 </template>
 
 <script setup>
@@ -1122,6 +1142,32 @@ onMounted(() => {
   loadRatings()
   updateServiceStatistics()
 })
+
+
+import { postJSON } from '@/utils/api'   // 你刚建好的工具函数（路径别名保持你项目一致）
+
+const echoResp = ref(null)
+const summaryResp = ref(null)
+const apiErr = ref('')
+
+async function callEcho () {
+  apiErr.value = ''; echoResp.value = null
+  try {
+    echoResp.value = await postJSON('/api/echo', { hello: 'world', when: Date.now() })
+  } catch (e) {
+    apiErr.value = e.message
+  }
+}
+
+async function callSummary () {
+  apiErr.value = ''; summaryResp.value = null
+  try {
+    // 演示用：1..5；你也可以把这里改成页面上输入的数组
+    summaryResp.value = await postJSON('/api/summary', { numbers: [1,2,3,4,5] })
+  } catch (e) {
+    apiErr.value = e.message
+  }
+}
 </script>
 
 <style scoped>
