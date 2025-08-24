@@ -2,7 +2,6 @@
   <div class="dashboard-container">
     <!-- Tab Navigation -->
     <ChartView title="Healthcare Analytics Dashboard" />
-    <!-- <SimpleCharts title="Healthcare Analytics Dashboard" /> -->
 
     <div class="tab-navigation">
       <button
@@ -38,48 +37,32 @@
         <button type="submit">Add User</button>
       </form>
 
-      <!-- ✅ 用户表格（原生 table + 交互） -->
-      <div class="users-actions" style="margin: 12px 0; display:flex; gap:8px; flex-wrap:wrap;">
-        <!-- <input
+      <!-- Users 工具栏 -->
+      <div class="users-toolbar">
+        <input
           v-model="userSearch"
           @input="userCurrentPage=1"
-          placeholder="Search username / email"
-          aria-label="Search users"
+          placeholder="Global search (username/email)"
+          aria-label="Global search users"
         />
-        <select v-model="userRole" @change="userCurrentPage=1" aria-label="Filter role">
-          <option value="all">All roles</option>
-          <option value="admin">admin</option>
-          <option value="guest">guest</option>
-        </select> -->
+        <select
+          v-model="userRole"
+          @change="userCurrentPage=1"
+          aria-label="Filter role globally"
+        >
+          <option value="all">All roles (global)</option>
+          <option value="admin">admin (global)</option>
+          <option value="guest">guest (global)</option>
+        </select>
 
-        <!-- 导出按钮 -->
-        <!-- Users 工具条（与上方表单同款样式） -->
-<div class="users-toolbar">
-  <input
-    v-model="userSearch"
-    @input="userCurrentPage=1"
-    placeholder="Search username / email"
-    aria-label="Search users"
-  />
-  <select
-    v-model="userRole"
-    @change="userCurrentPage=1"
-    aria-label="Filter role"
-  >
-    <option value="all">All roles</option>
-    <option value="admin">admin</option>
-    <option value="guest">guest</option>
-  </select>
+        <div class="spacer"></div>
 
-  <div class="spacer"></div>
-
-  <button class="btn btn-export btn-sm" @click="exportUsersCSV"  :disabled="!flatUsers.length">Export CSV</button>
-  <button class="btn btn-export btn-sm" @click="exportUsersXLSX" :disabled="!flatUsers.length">Export XLSX</button>
-  <button class="btn btn-export btn-sm" @click="exportUsersPDF"  :disabled="!flatUsers.length">Export PDF</button>
-</div>
-
+        <button class="btn btn-export btn-sm" @click="exportUsersCSV" :disabled="!flatUsers.length">Export CSV</button>
+        <button class="btn btn-export btn-sm" @click="exportUsersXLSX" :disabled="!flatUsers.length">Export XLSX</button>
+        <button class="btn btn-export btn-sm" @click="exportUsersPDF" :disabled="!flatUsers.length">Export PDF</button>
       </div>
 
+      <!-- 用户表格 -->
       <table class="users-table">
         <thead>
           <tr>
@@ -94,6 +77,40 @@
             </th>
             <th>Delete</th>
           </tr>
+          <!-- 每列搜索行 -->
+          <tr class="search-row">
+            <th>
+              <input
+                v-model="columnFilters.username"
+                @input="userCurrentPage=1"
+                placeholder="Search username..."
+                class="column-search"
+                aria-label="Search by username"
+              />
+            </th>
+            <th>
+              <input
+                v-model="columnFilters.email"
+                @input="userCurrentPage=1"
+                placeholder="Search email..."
+                class="column-search"
+                aria-label="Search by email"
+              />
+            </th>
+            <th>
+              <select
+                v-model="columnFilters.role"
+                @change="userCurrentPage=1"
+                class="column-search"
+                aria-label="Filter by role"
+              >
+                <option value="">All roles</option>
+                <option value="admin">admin</option>
+                <option value="guest">guest</option>
+              </select>
+            </th>
+            <th></th>
+          </tr>
         </thead>
         <tbody>
           <tr v-for="user in paginatedUsers" :key="user.username">
@@ -103,7 +120,8 @@
             <td>
               <button
                 @click="deleteUserByKey(user.username)"
-                :disabled="user.role === 'admin' && user.username === 'admin'">
+                :disabled="user.role === 'admin' && user.username === 'admin'"
+                class="btn btn-delete btn-sm">
                 Delete
               </button>
             </td>
@@ -112,14 +130,14 @@
       </table>
 
       <!-- 分页 -->
-      <div class="pagination" v-if="userTotalPages > 1" style="display:flex; gap:8px; align-items:center; margin-top:8px;">
+      <div class="pagination" v-if="userTotalPages > 1">
         <button
           class="btn btn-small"
           :disabled="userCurrentPage===1"
           @click="userCurrentPage = Math.max(1, userCurrentPage - 1)">
           Previous
         </button>
-        <span>Page {{ userCurrentPage }} of {{ userTotalPages }}</span>
+        <span>Page {{ userCurrentPage }} of {{ userTotalPages }} ({{ filteredUsers.length }} total users)</span>
         <button
           class="btn btn-small"
           :disabled="userCurrentPage===userTotalPages"
@@ -127,7 +145,6 @@
           Next
         </button>
       </div>
-
     </div>
 
     <!-- Ratings Management Tab -->
@@ -184,7 +201,7 @@
       <div class="filters-section">
         <div class="filters">
           <div class="filter-group">
-            <label>Service:</label>
+            <label>Global Service Filter:</label>
             <select v-model="selectedService" @change="applyFilters">
               <option value="all">All Services</option>
               <option value="gp">General Practice</option>
@@ -194,7 +211,7 @@
           </div>
 
           <div class="filter-group">
-            <label>Sort by:</label>
+            <label>Global Sort:</label>
             <select v-model="sortBy" @change="applyFilters">
               <option value="newest">Newest First</option>
               <option value="oldest">Oldest First</option>
@@ -204,7 +221,7 @@
           </div>
 
           <div class="filter-group">
-            <label>Search:</label>
+            <label>Global Search:</label>
             <input
               v-model="searchTerm"
               @input="applyFilters"
@@ -219,9 +236,9 @@
             Refresh Data
           </button>
 
-          <!-- <button @click="exportRatingsData" class="btn btn-export">
-            Export Ratings
-          </button> -->
+          <button @click="generateMockData" class="btn btn-success">
+            Generate Mock Data
+          </button>
 
           <button @click="clearAllRatings" class="btn btn-danger">
             Clear All Ratings
@@ -238,7 +255,6 @@
           <button @click="exportRatingsPDF" class="btn btn-export">
             Export PDF
           </button>
-
         </div>
       </div>
 
@@ -252,12 +268,79 @@
           <table class="ratings-table">
             <thead>
               <tr>
-                <th>Date</th>
-                <th>User</th>
-                <th>Service</th>
-                <th>Overall Rating</th>
+                <th @click="toggleRatingSort('timestamp')" style="cursor:pointer">
+                  Date <span>{{ ratingSortIcon('timestamp') }}</span>
+                </th>
+                <th @click="toggleRatingSort('user')" style="cursor:pointer">
+                  User <span>{{ ratingSortIcon('user') }}</span>
+                </th>
+                <th @click="toggleRatingSort('service')" style="cursor:pointer">
+                  Service <span>{{ ratingSortIcon('service') }}</span>
+                </th>
+                <th @click="toggleRatingSort('rating')" style="cursor:pointer">
+                  Overall Rating <span>{{ ratingSortIcon('rating') }}</span>
+                </th>
                 <th>Review</th>
                 <th>Actions</th>
+              </tr>
+              <!-- 每列搜索行 -->
+              <tr class="search-row">
+                <th>
+                  <input
+                    v-model="ratingColumnFilters.date"
+                    @input="currentPage=1"
+                    placeholder="Search date..."
+                    class="column-search"
+                    aria-label="Search by date"
+                  />
+                </th>
+                <th>
+                  <input
+                    v-model="ratingColumnFilters.user"
+                    @input="currentPage=1"
+                    placeholder="Search user..."
+                    class="column-search"
+                    aria-label="Search by user"
+                  />
+                </th>
+                <th>
+                  <select
+                    v-model="ratingColumnFilters.service"
+                    @change="currentPage=1"
+                    class="column-search"
+                    aria-label="Filter by service"
+                  >
+                    <option value="">All Services</option>
+                    <option value="gp">General Practice</option>
+                    <option value="specialist">Specialist</option>
+                    <option value="mental">Mental Health</option>
+                  </select>
+                </th>
+                <th>
+                  <select
+                    v-model="ratingColumnFilters.rating"
+                    @change="currentPage=1"
+                    class="column-search"
+                    aria-label="Filter by rating"
+                  >
+                    <option value="">All Ratings</option>
+                    <option value="5">5 Stars</option>
+                    <option value="4">4 Stars</option>
+                    <option value="3">3 Stars</option>
+                    <option value="2">2 Stars</option>
+                    <option value="1">1 Star</option>
+                  </select>
+                </th>
+                <th>
+                  <input
+                    v-model="ratingColumnFilters.review"
+                    @input="currentPage=1"
+                    placeholder="Search review..."
+                    class="column-search"
+                    aria-label="Search by review"
+                  />
+                </th>
+                <th></th>
               </tr>
             </thead>
             <tbody>
@@ -351,7 +434,7 @@
             </button>
 
             <span class="page-info">
-              Page {{ currentPage }} of {{ totalPages }}
+              Page {{ currentPage }} of {{ totalPages }} ({{ filteredRatings.length }} total ratings)
             </span>
 
             <button
@@ -379,7 +462,6 @@
 import { ref, computed, onMounted } from 'vue'
 import { initializeHealthcareData } from '@/utils/initData.js'
 import ChartView from '@/components/ChartView.vue'
-// import SimpleCharts from '@/components/SimpleCharts.vue'
 
 import * as XLSX from 'xlsx'
 import jsPDF from 'jspdf'
@@ -388,13 +470,28 @@ import autoTable from 'jspdf-autotable'
 // Tab management
 const activeTab = ref('users')
 
-// User management (existing functionality)
+// User management
 const users = ref([])
 const newUser = ref({
   username: '',
   email: '',
   password: '',
   role: 'guest'
+})
+
+// 用户表格 - 全局过滤和搜索
+const userSearch = ref('')
+const userRole = ref('all')
+const userSortKey = ref('username')
+const userSortAsc = ref(true)
+const userCurrentPage = ref(1)
+const userItemsPerPage = 10
+
+// 用户表格 - 按列过滤
+const columnFilters = ref({
+  username: '',
+  email: '',
+  role: ''
 })
 
 // Ratings management
@@ -406,6 +503,18 @@ const expandedRows = ref([])
 const currentPage = ref(1)
 const itemsPerPage = 10
 
+// 评分表格 - 按列过滤和排序
+const ratingColumnFilters = ref({
+  date: '',
+  user: '',
+  service: '',
+  rating: '',
+  review: ''
+})
+
+const ratingSortKey = ref('timestamp')
+const ratingSortAsc = ref(false) // 日期默认降序（最新的在前）
+
 // Service names mapping
 const serviceNames = {
   gp: 'General Practice Services',
@@ -413,23 +522,26 @@ const serviceNames = {
   mental: 'Mental Health Services'
 }
 
-// —— Users 交互：搜索 / 角色筛选 / 排序 / 分页 —— //
-const userSearch = ref('')
-const userRole = ref('all')
-const userSortKey = ref('username')
-const userSortAsc = ref(true)
-const userCurrentPage = ref(1)
-const userItemsPerPage = 10
-
+// 用户过滤逻辑（增强版）
 const filteredUsers = computed(() => {
   let arr = [...users.value]
 
-  // 角色筛选
-  if (userRole.value !== 'all') {
-    arr = arr.filter(u => (u.role || 'guest') === userRole.value)
+  // 按列过滤
+  if (columnFilters.value.username) {
+    const term = columnFilters.value.username.toLowerCase()
+    arr = arr.filter(u => (u.username || '').toLowerCase().includes(term))
   }
 
-  // 搜索（用户名/邮箱）
+  if (columnFilters.value.email) {
+    const term = columnFilters.value.email.toLowerCase()
+    arr = arr.filter(u => (u.email || '').toLowerCase().includes(term))
+  }
+
+  if (columnFilters.value.role) {
+    arr = arr.filter(u => (u.role || 'guest') === columnFilters.value.role)
+  }
+
+  // 全局搜索（保留原有功能）
   if (userSearch.value) {
     const term = userSearch.value.toLowerCase()
     arr = arr.filter(u =>
@@ -438,12 +550,17 @@ const filteredUsers = computed(() => {
     )
   }
 
+  // 角色筛选（保留原有功能）
+  if (userRole.value !== 'all') {
+    arr = arr.filter(u => (u.role || 'guest') === userRole.value)
+  }
+
   // 排序
   arr.sort((a, b) => {
     const A = (a[userSortKey.value] ?? '').toString().toLowerCase()
     const B = (b[userSortKey.value] ?? '').toString().toLowerCase()
     if (A < B) return userSortAsc.value ? -1 : 1
-    if (A > B) return userSortAsc.value ?  1 : -1
+    if (A > B) return userSortAsc.value ? 1 : -1
     return 0
   })
 
@@ -468,15 +585,31 @@ function toggleUserSort(key) {
     userSortAsc.value = true
   }
 }
+
 function sortIcon(key) {
   return userSortKey.value === key ? (userSortAsc.value ? '▲' : '▼') : ''
 }
+
 function deleteUserByKey(username) {
   const idx = users.value.findIndex(u => u.username === username)
   if (idx > -1) deleteUser(idx)
 }
 
-// Load users (existing functionality)
+// 评分表格排序方法
+function toggleRatingSort(key) {
+  if (ratingSortKey.value === key) {
+    ratingSortAsc.value = !ratingSortAsc.value
+  } else {
+    ratingSortKey.value = key
+    ratingSortAsc.value = key === 'timestamp' ? false : true // 日期默认降序，其他升序
+  }
+}
+
+function ratingSortIcon(key) {
+  return ratingSortKey.value === key ? (ratingSortAsc.value ? '▲' : '▼') : ''
+}
+
+// Load users
 function loadUsers() {
   let loaded = JSON.parse(localStorage.getItem('users') || '[]')
   loaded.forEach(u => {
@@ -486,7 +619,7 @@ function loadUsers() {
   localStorage.setItem('users', JSON.stringify(loaded))
 }
 
-// Add user (existing functionality)
+// Add user
 function addUser() {
   if (users.value.some(u => u.username === newUser.value.username)) {
     alert('Username already exists!')
@@ -502,7 +635,7 @@ function addUser() {
   })
 }
 
-// Delete user (existing functionality)
+// Delete user
 function deleteUser(idx) {
   if (users.value[idx].role === 'admin' && users.value[idx].username === 'admin') {
     alert('Cannot delete default admin!')
@@ -528,11 +661,12 @@ function loadRatings() {
   }
 }
 
-// Get user name from rating (handle different data structures)
+// Get user name from rating
 function getUserName(rating) {
   return rating.user?.username || rating.rating?.userName || 'Unknown User'
 }
 
+// 导出功能
 function flattenRatings(arr) {
   return (arr || []).map(r => ({
     id: r.id,
@@ -553,6 +687,7 @@ function exportRatingsCSV() {
   const rows = flattenRatings(filteredRatings.value)
   exportCsv(rows, 'ratings.csv')
 }
+
 function exportRatingsXLSX() {
   const rows = flattenRatings(filteredRatings.value)
   const ws = XLSX.utils.json_to_sheet(rows)
@@ -560,6 +695,7 @@ function exportRatingsXLSX() {
   XLSX.utils.book_append_sheet(wb, ws, 'Ratings')
   XLSX.writeFile(wb, 'ratings.xlsx')
 }
+
 function exportRatingsPDF() {
   const rows = flattenRatings(filteredRatings.value)
   const doc = new jsPDF()
@@ -582,12 +718,7 @@ function exportCsv(rows, filename) {
   URL.revokeObjectURL(url)
 }
 
-// === 导出依赖（若已引入可忽略） ===
-// import * as XLSX from 'xlsx'
-// import jsPDF from 'jspdf'
-// import autoTable from 'jspdf-autotable'
-
-// === Users 扁平化（不导出密码） ===
+// Users 扁平化（不导出密码）
 const flatUsers = computed(() => (users.value || []).map(u => ({
   username: u.username || '',
   email: u.email || '',
@@ -596,11 +727,11 @@ const flatUsers = computed(() => (users.value || []).map(u => ({
   lastLogin: u.lastLogin || ''
 })))
 
-// === 通用 CSV 导出小函数（仅本文件使用） ===
+// 通用 CSV 导出小函数
 function downloadCsv(rows, filename = 'data.csv') {
   if (!rows?.length) { alert('No data to export'); return }
   const headers = Object.keys(rows[0])
-  const esc = v => JSON.stringify(v ?? '') // 处理逗号/引号
+  const esc = v => JSON.stringify(v ?? '')
   const csv = [headers.join(','), ...rows.map(r => headers.map(h => esc(r[h])).join(','))].join('\n')
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
   const url = URL.createObjectURL(blob)
@@ -609,7 +740,7 @@ function downloadCsv(rows, filename = 'data.csv') {
   URL.revokeObjectURL(url)
 }
 
-// === Users 导出：CSV / XLSX / PDF ===
+// Users 导出
 function exportUsersCSV() {
   const rows = flatUsers.value
   if (!rows.length) { alert('No users to export'); return }
@@ -635,14 +766,99 @@ function exportUsersPDF() {
   doc.save('users.pdf')
 }
 
+// 生成模拟数据的函数
+function generateMockRatings(count = 50) {
+  const services = [
+    { key: 'gp', name: 'General Practice Services' },
+    { key: 'specialist', name: 'Specialist Consultations' },
+    { key: 'mental', name: 'Mental Health Services' }
+  ]
 
-// Computed properties for ratings
+  const users = [
+    'alice_johnson', 'bob_smith', 'carol_davis', 'david_wilson', 'eva_brown',
+    'frank_miller', 'grace_lee', 'henry_clark', 'iris_taylor', 'jack_white',
+    'kate_green', 'liam_hall', 'mia_adams', 'noah_baker', 'olivia_carter',
+    'paul_evans', 'quinn_fisher', 'ruby_garcia', 'sam_harris', 'tina_jones'
+  ]
+
+  const reviewTemplates = [
+    'Excellent service, very professional staff.',
+    'Good experience overall, would recommend.',
+    'Professional and thorough consultation.',
+    'Staff was friendly and helpful.',
+    'Quick and efficient service.',
+    'Outstanding care and attention to detail.',
+    'Very satisfied with the treatment.',
+    'Clean facilities and modern equipment.',
+    'Doctor took time to explain everything.',
+    'Convenient location and easy parking.',
+    'Wait time was reasonable.',
+    'Compassionate and understanding staff.',
+    'Highly recommend this service.',
+    'Great follow-up care and support.',
+    'State-of-the-art medical facilities.'
+  ]
+
+  const mockRatings = []
+
+  for (let i = 0; i < count; i++) {
+    const service = services[Math.floor(Math.random() * services.length)]
+    const user = users[Math.floor(Math.random() * users.length)]
+    const review = reviewTemplates[Math.floor(Math.random() * reviewTemplates.length)]
+
+    // 生成相关性评分（总体评分影响其他评分）
+    const overall = Math.floor(Math.random() * 5) + 1
+    const variance = Math.floor(Math.random() * 2) - 1 // -1, 0, or 1
+
+    const rating = {
+      id: 'mock-' + Date.now() + '-' + i.toString().padStart(3, '0'),
+      service: service.key,
+      serviceName: service.name,
+      user: { username: user },
+      rating: {
+        overall: overall,
+        quality: Math.max(1, Math.min(5, overall + variance)),
+        waitTime: Math.max(1, Math.min(5, overall + Math.floor(Math.random() * 3) - 1)),
+        communication: Math.max(1, Math.min(5, overall + variance)),
+        facilities: Math.max(1, Math.min(5, overall + Math.floor(Math.random() * 2))),
+        review: review + (overall === 5 ? ' Exceptional experience!' : '')
+      },
+      timestamp: new Date(Date.now() - Math.floor(Math.random() * 90) * 24 * 60 * 60 * 1000).toISOString()
+    }
+
+    mockRatings.push(rating)
+  }
+
+  return mockRatings
+}
+
+// 生成模拟数据的处理函数
+const generateMockData = () => {
+  const count = prompt('请输入要生成的评分数量 (建议20-100):', '50')
+  if (!count || isNaN(count)) return
+
+  const newRatings = generateMockRatings(parseInt(count))
+  const existingRatings = JSON.parse(localStorage.getItem('healthcareRatings') || '[]')
+
+  // 合并新旧数据
+  const allRatings = [...existingRatings, ...newRatings]
+
+  // 保存到localStorage
+  localStorage.setItem('healthcareRatings', JSON.stringify(allRatings))
+
+  // 重新加载数据
+  loadRatings()
+  updateServiceStatistics()
+
+  alert(`成功生成 ${count} 条评分数据！`)
+}
+
+// 评分统计计算
 const ratingsStats = computed(() => {
   const total = ratings.value.length
   const average = total > 0 ?
     (ratings.value.reduce((sum, r) => sum + r.rating.overall, 0) / total).toFixed(1) : '0.0'
 
-  // Recent ratings (last 30 days)
   const thirtyDaysAgo = new Date()
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
   const recent = ratings.value.filter(r => new Date(r.timestamp) > thirtyDaysAgo).length
@@ -667,15 +883,39 @@ const serviceStats = computed(() => {
   return stats
 })
 
+// 评分过滤逻辑（增强版）
 const filteredRatings = computed(() => {
   let filtered = ratings.value
 
-  // Filter by service
+  // 按列过滤
+  if (ratingColumnFilters.value.date) {
+    const term = ratingColumnFilters.value.date.toLowerCase()
+    filtered = filtered.filter(r => formatDate(r.timestamp).toLowerCase().includes(term))
+  }
+
+  if (ratingColumnFilters.value.user) {
+    const term = ratingColumnFilters.value.user.toLowerCase()
+    filtered = filtered.filter(r => getUserName(r).toLowerCase().includes(term))
+  }
+
+  if (ratingColumnFilters.value.service) {
+    filtered = filtered.filter(r => r.service === ratingColumnFilters.value.service)
+  }
+
+  if (ratingColumnFilters.value.rating) {
+    filtered = filtered.filter(r => r.rating.overall.toString() === ratingColumnFilters.value.rating)
+  }
+
+  if (ratingColumnFilters.value.review) {
+    const term = ratingColumnFilters.value.review.toLowerCase()
+    filtered = filtered.filter(r => (r.rating.review || '').toLowerCase().includes(term))
+  }
+
+  // 保留原有的全局过滤功能
   if (selectedService.value !== 'all') {
     filtered = filtered.filter(r => r.service === selectedService.value)
   }
 
-  // Filter by search term
   if (searchTerm.value) {
     const term = searchTerm.value.toLowerCase()
     filtered = filtered.filter(r => {
@@ -689,20 +929,46 @@ const filteredRatings = computed(() => {
     })
   }
 
-  // Sort
+  // 新的排序逻辑
   filtered.sort((a, b) => {
-    switch (sortBy.value) {
-      case 'newest':
-        return new Date(b.timestamp) - new Date(a.timestamp)
-      case 'oldest':
-        return new Date(a.timestamp) - new Date(b.timestamp)
-      case 'highest':
-        return b.rating.overall - a.rating.overall
-      case 'lowest':
-        return a.rating.overall - b.rating.overall
+    let aVal, bVal
+
+    switch (ratingSortKey.value) {
+      case 'timestamp':
+        aVal = new Date(a.timestamp)
+        bVal = new Date(b.timestamp)
+        break
+      case 'user':
+        aVal = getUserName(a).toLowerCase()
+        bVal = getUserName(b).toLowerCase()
+        break
+      case 'service':
+        aVal = a.serviceName || a.service
+        bVal = b.serviceName || b.service
+        break
+      case 'rating':
+        aVal = a.rating.overall
+        bVal = b.rating.overall
+        break
       default:
-        return 0
+        // 如果没有匹配的排序键，使用原有的排序逻辑
+        switch (sortBy.value) {
+          case 'newest':
+            return new Date(b.timestamp) - new Date(a.timestamp)
+          case 'oldest':
+            return new Date(a.timestamp) - new Date(b.timestamp)
+          case 'highest':
+            return b.rating.overall - a.rating.overall
+          case 'lowest':
+            return a.rating.overall - b.rating.overall
+          default:
+            return 0
+        }
     }
+
+    if (aVal < bVal) return ratingSortAsc.value ? -1 : 1
+    if (aVal > bVal) return ratingSortAsc.value ? 1 : -1
+    return 0
   })
 
   return filtered
@@ -754,11 +1020,8 @@ const deleteRating = (ratingId) => {
   if (confirm('Are you sure you want to delete this rating?')) {
     ratings.value = ratings.value.filter(r => r.id !== ratingId)
     localStorage.setItem('healthcareRatings', JSON.stringify(ratings.value))
-
-    // Update service statistics
     updateServiceStatistics()
 
-    // Also remove from expanded rows if it was expanded
     const expandedIndex = expandedRows.value.indexOf(ratingId)
     if (expandedIndex > -1) {
       expandedRows.value.splice(expandedIndex, 1)
@@ -771,7 +1034,6 @@ const updateServiceStatistics = () => {
     const ratings = JSON.parse(localStorage.getItem('healthcareRatings') || '[]')
     let servicesData = JSON.parse(localStorage.getItem('healthcareServicesData') || '{}')
 
-    // Initialize all services if not exists
     const serviceTypes = ['gp', 'specialist', 'mental']
     serviceTypes.forEach(serviceKey => {
       if (!servicesData[serviceKey]) {
@@ -789,24 +1051,20 @@ const updateServiceStatistics = () => {
       }
     })
 
-    // Calculate statistics for each service
     serviceTypes.forEach(serviceKey => {
       const serviceRatings = ratings.filter(r => r.service === serviceKey)
       const service = servicesData[serviceKey]
 
       if (serviceRatings.length > 0) {
-        // Calculate average overall rating
         const totalOverall = serviceRatings.reduce((sum, r) => sum + r.rating.overall, 0)
         service.averageRating = Number((totalOverall / serviceRatings.length).toFixed(1))
         service.totalReviews = serviceRatings.length
 
-        // Calculate category averages
         service.categories[0].rating = Number((serviceRatings.reduce((sum, r) => sum + (r.rating.quality || 0), 0) / serviceRatings.length).toFixed(1))
         service.categories[1].rating = Number((serviceRatings.reduce((sum, r) => sum + (r.rating.waitTime || 0), 0) / serviceRatings.length).toFixed(1))
         service.categories[2].rating = Number((serviceRatings.reduce((sum, r) => sum + (r.rating.communication || 0), 0) / serviceRatings.length).toFixed(1))
         service.categories[3].rating = Number((serviceRatings.reduce((sum, r) => sum + (r.rating.facilities || 0), 0) / serviceRatings.length).toFixed(1))
 
-        // Store recent ratings (last 5)
         service.recentRatings = serviceRatings.slice(0, 5).map(r => ({
           id: r.id,
           overall: r.rating.overall,
@@ -822,10 +1080,8 @@ const updateServiceStatistics = () => {
       }
     })
 
-    // Save updated service data
     localStorage.setItem('healthcareServicesData', JSON.stringify(servicesData))
 
-    // Also create a summary for admin dashboard
     const adminSummary = {
       totalRatings: ratings.length,
       averageOverallRating: ratings.length > 0 ?
@@ -841,19 +1097,6 @@ const updateServiceStatistics = () => {
   }
 }
 
-const exportRatingsData = () => {
-  const dataStr = JSON.stringify(ratings.value, null, 2)
-  const dataBlob = new Blob([dataStr], { type: 'application/json' })
-  const url = URL.createObjectURL(dataBlob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = `healthcare-ratings-${new Date().toISOString().split('T')[0]}.json`
-  document.body.appendChild(link)
-  link.click()
-  document.body.removeChild(link)
-  URL.revokeObjectURL(url)
-}
-
 const clearAllRatings = () => {
   if (confirm('Are you sure you want to clear all rating data? This action cannot be undone.')) {
     ratings.value = []
@@ -865,33 +1108,18 @@ const clearAllRatings = () => {
   }
 }
 
-// Refresh all data
 const refreshData = () => {
   console.log('Refreshing admin dashboard data...')
-
-  // First initialize preset data if needed
   initializeHealthcareData()
-
-  // Then load the data
   loadRatings()
-
-  // Update statistics to ensure everything is in sync
   updateServiceStatistics()
 }
 
 onMounted(() => {
   console.log('Admin dashboard mounted')
-
-  // Initialize preset data if needed
   initializeHealthcareData()
-
-  // Load user data
   loadUsers()
-
-  // Load and initialize ratings data
   loadRatings()
-
-  // Update statistics to ensure everything is in sync
   updateServiceStatistics()
 })
 </script>
@@ -940,7 +1168,7 @@ onMounted(() => {
   padding: 2rem;
 }
 
-/* User Management Styles (existing) */
+/* User Management Styles */
 .add-user-form {
   margin-bottom: 2rem;
   display: flex;
@@ -964,6 +1192,40 @@ onMounted(() => {
   cursor: pointer;
 }
 
+.add-user-form button:hover {
+  background: #1565c0;
+}
+
+/* Users 工具栏 */
+.users-toolbar {
+  display: flex;
+  gap: 0.7rem;
+  align-items: center;
+  margin: 0.8rem 0 1rem;
+}
+
+.users-toolbar .spacer {
+  flex: 1;
+}
+
+.users-toolbar input,
+.users-toolbar select {
+  padding: 0.4rem 0.7rem;
+  border: 1px solid #aaa;
+  border-radius: 4px;
+  min-width: 120px;
+  font-size: 0.9rem;
+  outline: none;
+  box-shadow: none;
+}
+
+.users-toolbar input:focus,
+.users-toolbar select:focus {
+  border-color: #1976d2;
+  box-shadow: 0 0 0 0.15rem rgba(25,118,210,.15);
+}
+
+/* 表格样式 */
 table {
   width: 100%;
   border-collapse: collapse;
@@ -978,11 +1240,123 @@ th, td {
 
 th {
   background: #f9f9fb;
+  font-weight: 600;
+  color: #2c3e50;
 }
 
-button[disabled] {
-  opacity: 0.5;
+/* 搜索行样式 */
+.search-row {
+  background: #f0f8ff !important;
+}
+
+.column-search {
+  width: 100%;
+  padding: 0.3rem 0.5rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  box-sizing: border-box;
+}
+
+.column-search:focus {
+  outline: none;
+  border-color: #1976d2;
+  box-shadow: 0 0 3px rgba(25, 118, 210, 0.3);
+}
+
+/* 确保表格标题可点击的视觉提示 */
+th[style*="cursor:pointer"]:hover {
+  background-color: #e9ecef;
+  transition: background-color 0.2s;
+}
+
+/* 按钮样式 */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.4rem 0.8rem;
+  border: none;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-decoration: none;
+}
+
+.btn-sm {
+  padding: 0.3rem 0.6rem;
+  font-size: 0.8rem;
+}
+
+.btn-export {
+  background: #28a745;
+  color: white;
+}
+
+.btn-export:hover {
+  background: #218838;
+}
+
+.btn-delete {
+  background: #dc3545;
+  color: white;
+}
+
+.btn-delete:hover {
+  background: #c82333;
+}
+
+.btn-small {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.8rem;
+  background: #6c757d;
+  color: white;
+}
+
+.btn-small:hover {
+  background: #5a6268;
+}
+
+.btn-refresh {
+  background: #17a2b8;
+  color: white;
+}
+
+.btn-refresh:hover {
+  background: #138496;
+}
+
+.btn-danger {
+  background: #dc3545;
+  color: white;
+}
+
+.btn-danger:hover {
+  background: #c82333;
+}
+
+.btn:disabled {
+  background: #e9ecef;
+  color: #6c757d;
   cursor: not-allowed;
+}
+
+/* 分页样式 */
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  background: #f8f9fa;
+  margin-top: 1rem;
+}
+
+.page-info {
+  color: #6c757d;
+  font-size: 0.9rem;
 }
 
 /* Ratings Management Styles */
@@ -1114,74 +1488,7 @@ button[disabled] {
 .action-buttons {
   display: flex;
   gap: 1rem;
-}
-
-.btn {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
-  border: none;
-  border-radius: 4px;
-  font-size: 0.9rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.btn-refresh {
-  background: #17a2b8;
-  color: white;
-}
-
-.btn-refresh:hover {
-  background: #138496;
-}
-
-.btn-export {
-  background: #28a745;
-  color: white;
-}
-
-.btn-export:hover {
-  background: #218838;
-}
-
-.btn-danger {
-  background: #dc3545;
-  color: white;
-}
-
-.btn-danger:hover {
-  background: #c82333;
-}
-
-.btn-small {
-  padding: 0.25rem 0.5rem;
-  font-size: 0.8rem;
-  background: #6c757d;
-  color: white;
-}
-
-.btn-small:hover {
-  background: #5a6268;
-}
-
-.btn-delete {
-  padding: 0.25rem 0.5rem;
-  font-size: 0.8rem;
-  background: #dc3545;
-  color: white;
-}
-
-.btn-delete:hover {
-  background: #c82333;
-}
-
-.btn:disabled {
-  background: #e9ecef;
-  color: #6c757d;
-  cursor: not-allowed;
+  flex-wrap: wrap;
 }
 
 .ratings-table-container {
@@ -1334,20 +1641,6 @@ button[disabled] {
   gap: 0.5rem;
 }
 
-.pagination {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 1rem;
-  padding: 1rem;
-  background: #f8f9fa;
-}
-
-.page-info {
-  color: #6c757d;
-  font-size: 0.9rem;
-}
-
 .no-ratings-message {
   padding: 3rem;
   text-align: center;
@@ -1355,7 +1648,7 @@ button[disabled] {
   font-style: italic;
 }
 
-/* Responsive */
+/* 响应式设计 */
 @media (max-width: 768px) {
   .dashboard-container {
     margin: 1rem;
@@ -1390,31 +1683,133 @@ button[disabled] {
   .actions-cell {
     flex-direction: column;
   }
-}
 
-/* 与 .add-user-form 输入框一致的视觉 */
-.users-toolbar {
-  display: flex;
-  gap: 0.7rem;
+  .users-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .users-toolbar .spacer {
+    display: none;
+  }
+}
+/* 修复后的按钮样式 */
+.btn {
+  display: inline-flex;
   align-items: center;
-  margin: 0.8rem 0 1rem;
-}
-.users-toolbar .spacer { flex: 1; } /* 把导出按钮推到右边 */
-
-.users-toolbar input,
-.users-toolbar select {
-  padding: 0.4rem 0.7rem;     /* 与上方相同 */
-  border: 1px solid #aaa;     /* 与上方相同 */
-  border-radius: 4px;         /* 与上方相同 */
-  min-width: 120px;           /* 与上方相同 */
+  gap: 0.5rem;
+  padding: 0.6rem 1rem;
+  border: none;
+  border-radius: 4px;
   font-size: 0.9rem;
-  outline: none;
-  box-shadow: none;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-decoration: none;
+  min-height: 36px;
 }
-.users-toolbar input:focus,
-.users-toolbar select:focus {
-  border-color: #1976d2;      /* 可与上方保持相同或用 #aaa */
-  box-shadow: 0 0 0 0.15rem rgba(25,118,210,.15);
+
+.btn-sm {
+  padding: 0.5rem 0.8rem;
+  font-size: 0.85rem;
+  min-height: 32px;
+}
+
+.btn-export {
+  background: #28a745;
+  color: white;
+  padding: 0.6rem 1rem;
+  font-size: 0.9rem;
+}
+
+.btn-export:hover {
+  background: #218838;
+}
+
+.btn-delete {
+  background: #dc3545;
+  color: white;
+  padding: 0.5rem 0.8rem;
+  font-size: 0.85rem;
+}
+
+.btn-delete:hover {
+  background: #c82333;
+}
+
+.btn-small {
+  padding: 0.5rem 0.8rem;
+  font-size: 0.85rem;
+  background: #6c757d;
+  color: white;
+  min-height: 32px;
+}
+
+.btn-small:hover {
+  background: #5a6268;
+}
+
+.btn-refresh {
+  background: #17a2b8;
+  color: white;
+  padding: 0.6rem 1rem;
+  font-size: 0.9rem;
+}
+
+.btn-refresh:hover {
+  background: #138496;
+}
+
+.btn-danger {
+  background: #dc3545;
+  color: white;
+  padding: 0.6rem 1rem;
+  font-size: 0.9rem;
+}
+
+.btn-danger:hover {
+  background: #c82333;
+}
+
+.btn:disabled {
+  background: #e9ecef;
+  color: #6c757d;
+  cursor: not-allowed;
+}
+
+/* 确保添加用户表单的按钮也有合适的大小 */
+.add-user-form button {
+  background: #1976d2;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  padding: 0.6rem 1.2rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  min-height: 36px;
+}
+
+.add-user-form button:hover {
+  background: #1565c0;
+}
+
+/* 工具栏中的导出按钮保持一致 */
+.users-toolbar .btn {
+  padding: 0.6rem 1rem;
+  font-size: 0.9rem;
+  min-height: 36px;
+}
+
+.btn-success {
+  background: #28a745;
+  color: white;
+  padding: 0.6rem 1rem;
+  font-size: 0.9rem;
+}
+
+.btn-success:hover {
+  background: #218838;
 }
 
 </style>

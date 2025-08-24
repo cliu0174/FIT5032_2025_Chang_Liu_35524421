@@ -13,7 +13,6 @@
           <div class="address-section">
             <h3>Postal Address:</h3>
             <address>
-              PO Box 520<br>
               South Yarra VIC 3141<br>
               Melbourne, Australia
             </address>
@@ -53,25 +52,47 @@
           </div>
         </div>
 
-        <!-- Map Section -->
+        <!-- Enhanced Map Section -->
         <div class="map-container" v-if="showMap">
-          <div class="map-placeholder">
-            <div class="map-header">
-              <h4>Healthcare Center Location</h4>
-              <button class="map-close" @click="showMap = !showMap" aria-label="toggle map">×</button>
+          <div class="map-header">
+            <h4>Healthcare Center Location</h4>
+            <div class="map-controls">
+              <button
+                v-if="userLocation"
+                @click="getDirections"
+                class="directions-btn"
+                :disabled="!userLocation"
+                aria-label="Get directions"
+              >
+                Get Directions
+              </button>
+              <button
+                class="map-close"
+                @click="showMap = !showMap"
+                aria-label="toggle map"
+              >
+                ×
+              </button>
             </div>
-            <div class="map-content">
-              <div class="location-marker">
-                <div class="marker-pin"></div>
-                <div class="marker-pulse"></div>
-              </div>
-              <p class="map-address">South Yarra Medical Center<br>South Yarra VIC 3141</p>
+          </div>
+
+          <!-- Google Maps Container -->
+          <div ref="mapContainer" class="google-map-container"></div>
+
+          <!-- Location Info -->
+          <div class="location-info-card">
+            <div class="location-marker-icon">📍</div>
+            <div class="location-details">
+              <p><strong>South Yarra Medical Center</strong></p>
+              <p>South Yarra VIC 3141</p>
+              <p class="phone-info">Phone: (03) 9827 5500</p>
+              <p v-if="distanceInfo" class="distance-info">{{ distanceInfo }}</p>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Right Side - Contact Form -->
+      <!-- Right Side - Contact Form (保持原有代码不变) -->
       <div class="contact-form-section">
         <form
           ref="formRef"
@@ -213,8 +234,9 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted, nextTick } from 'vue'
 import emailjs from '@emailjs/browser'
+import { Loader } from '@googlemaps/js-api-loader'
 
 // EmailJS配置（优先 .env）
 const SERVICE_ID  = import.meta.env.VITE_EMAILJS_SERVICE_ID  || 'service_7irjryz'
@@ -230,7 +252,165 @@ const formRef = ref(null)
 const selectedFile = ref(null)
 const fileName = ref('')
 
-// 文件处理（限制 2.5MB，符合 EmailJS 免费版常见限制）
+// 地图相关状态
+const mapContainer = ref(null)
+const map = ref(null)
+const userLocation = ref(null)
+const distanceInfo = ref('')
+
+// 医疗中心位置 (South Yarra, Melbourne)
+const medicalCenterLocation = {
+  lat: -37.8386,
+  lng: 144.9888
+}
+
+// 初始化Google Maps
+const initMap = async () => {
+  const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY
+
+  if (!apiKey) {
+    console.warn('Google Maps API key not found. Please set VITE_GOOGLE_MAPS_API_KEY in .env')
+    return
+  }
+
+  const loader = new Loader({
+    apiKey: apiKey,
+    version: 'weekly',
+    libraries: ['places']
+  })
+
+  try {
+    const google = await loader.load()
+
+    // 创建地图
+    map.value = new google.maps.Map(mapContainer.value, {
+      center: medicalCenterLocation,
+      zoom: 15,
+      styles: [
+        {
+          featureType: 'poi.medical',
+          elementType: 'geometry',
+          stylers: [{ visibility: 'on' }]
+        },
+        {
+          featureType: 'transit',
+          elementType: 'labels',
+          stylers: [{ visibility: 'on' }]
+        }
+      ]
+    })
+
+    // 添加医疗中心标记
+    const marker = new google.maps.Marker({
+      position: medicalCenterLocation,
+      map: map.value,
+      title: 'South Yarra Medical Center',
+      icon: {
+        path: google.maps.SymbolPath.CIRCLE,
+        scale: 12,
+        fillColor: '#dc3545',
+        fillOpacity: 1,
+        strokeColor: '#fff',
+        strokeWeight: 3,
+      }
+    })
+
+    // 信息窗口
+    const infoWindow = new google.maps.InfoWindow({
+      content: `
+        <div style="padding: 12px; font-family: Arial, sans-serif;">
+          <h4 style="margin: 0 0 8px 0; color: #333;">South Yarra Medical Center</h4>
+          <p style="margin: 4px 0; color: #666;">South Yarra VIC 3141</p>
+          <p style="margin: 4px 0; color: #666;"><strong>Phone:</strong> (03) 9827 5500</p>
+          <p style="margin: 8px 0 0 0; font-size: 12px; color: #888;">Click "Get Directions" for navigation</p>
+        </div>
+      `
+    })
+
+    marker.addListener('click', () => {
+      infoWindow.open(map.value, marker)
+    })
+
+    // 获取用户位置
+    getUserLocation()
+
+  } catch (error) {
+    console.error('Error loading Google Maps:', error)
+  }
+}
+
+// 获取用户当前位置
+const getUserLocation = () => {
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        userLocation.value = {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude
+        }
+        calculateDistance()
+      },
+      (error) => {
+        console.log('Geolocation error:', error)
+        // 设置默认位置（墨尔本CBD）
+        userLocation.value = {
+          lat: -37.8136,
+          lng: 144.9631
+        }
+        calculateDistance()
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 300000
+      }
+    )
+  }
+}
+
+// 计算距离
+const calculateDistance = () => {
+  if (userLocation.value) {
+    const distance = getDistanceFromLatLonInKm(
+      userLocation.value.lat,
+      userLocation.value.lng,
+      medicalCenterLocation.lat,
+      medicalCenterLocation.lng
+    )
+    distanceInfo.value = `Distance: ${distance.toFixed(1)} km from your location`
+  }
+}
+
+// 计算两点间距离的辅助函数
+const getDistanceFromLatLonInKm = (lat1, lon1, lat2, lon2) => {
+  const R = 6371 // 地球半径，单位：公里
+  const dLat = deg2rad(lat2 - lat1)
+  const dLon = deg2rad(lon2 - lon1)
+  const a =
+    Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) *
+    Math.sin(dLon/2) * Math.sin(dLon/2)
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))
+  return R * c
+}
+
+const deg2rad = (deg) => {
+  return deg * (Math.PI/180)
+}
+
+// 获取导航（功能2：路线规划）
+const getDirections = () => {
+  if (userLocation.value) {
+    const url = `https://www.google.com/maps/dir/${userLocation.value.lat},${userLocation.value.lng}/${medicalCenterLocation.lat},${medicalCenterLocation.lng}`
+    window.open(url, '_blank')
+  } else {
+    // 如果没有用户位置，直接打开医疗中心的Google Maps页面
+    const url = `https://www.google.com/maps/search/?api=1&query=${medicalCenterLocation.lat},${medicalCenterLocation.lng}`
+    window.open(url, '_blank')
+  }
+}
+
+// 文件处理（保持原有逻辑）
 function handleFileChange(e) {
   const file = e.target.files?.[0]
   if (!file) {
@@ -238,7 +418,6 @@ function handleFileChange(e) {
     fileName.value = ''
     return
   }
-  // 2.5MB 限制，超限直接清除
   const MAX = 2.5 * 1024 * 1024
   if (file.size > MAX) {
     alert('File is larger than 2.5MB. Please choose a smaller file.')
@@ -266,7 +445,7 @@ function formatFileSize(bytes) {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
 }
 
-// 发送（仅使用 sendForm，简单可靠）
+// 发送邮件（保持原有逻辑）
 async function sendEmail() {
   if (!SERVICE_ID || !TEMPLATE_ID || !PUBLIC_KEY) {
     alert('EmailJS configuration missing, please check .env')
@@ -293,6 +472,14 @@ async function sendEmail() {
     isSubmitting.value = false
   }
 }
+
+// 组件挂载时初始化地图
+onMounted(async () => {
+  await nextTick()
+  if (showMap.value) {
+    initMap()
+  }
+})
 </script>
 
 <style scoped>
@@ -302,7 +489,7 @@ async function sendEmail() {
   overflow: hidden; clip: rect(1px,1px,1px,1px); white-space: nowrap;
 }
 
-/* ======= 以下全部保持你原有样式（仅略微调整几处文案） ======= */
+/* ======= 保持你的原有样式，只添加地图相关样式 ======= */
 .contact-page {
   min-height: 100vh;
   background: white;
@@ -324,14 +511,18 @@ async function sendEmail() {
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
   font-family: Arial, sans-serif;
   font-weight: normal;
+  min-height: 700px; /* 设置最小高度确保两边平衡 */
+  align-items: stretch; /* 让两列高度相等 */
 }
 
 .contact-info {
   background: #e8d5e8;
-  padding: 3rem 2.5rem;
+  padding: 2.5rem 2rem; /* 稍微减少padding */
   color: #333;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between; /* 让内容分布均匀 */
 }
-
 .contact-title {
   font-size: 2.5rem;
   font-weight: 700;
@@ -355,24 +546,149 @@ async function sendEmail() {
 .social-link.linkedin { background: #0077b5; color: white; }
 .social-link:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2); }
 
-.map-container { margin-top: 1rem; }
-.map-placeholder { background: white; border-radius: 12px; padding: 1.5rem; min-height: 200px; position: relative; border: 1px solid rgba(93, 78, 117, 0.2); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); }
-.map-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; border-bottom: 1px solid rgba(93, 78, 117, 0.2); padding-bottom: 0.5rem; }
-.map-header h4 { margin: 0; color: #333; font-size: 1.1rem; font-weight: 600; }
-.map-close { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #888; padding: 0; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; }
-.map-content { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; min-height: 120px; }
-.location-marker { position: relative; margin-bottom: 1rem; }
-.marker-pin { width: 20px; height: 20px; background: #dc3545; border-radius: 50%; position: relative; z-index: 2; }
-.marker-pin::before { content: ''; position: absolute; top: -10px; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 10px solid transparent; border-right: 10px solid transparent; border-bottom: 15px solid #dc3545; }
-.marker-pulse { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 40px; height: 40px; background: rgba(220, 53, 69, 0.3); border-radius: 50%; animation: pulse 2s infinite; }
-@keyframes pulse { 0% { transform: translate(-50%, -50%) scale(0.8); opacity: 1; } 100% { transform: translate(-50%, -50%) scale(2); opacity: 0; } }
-.map-address { color: #333; font-size: 0.9rem; line-height: 1.4; margin: 0; font-weight: normal; }
+/* ======= 新的地图样式 ======= */
+.map-container {
+  margin-top: 1rem;
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
 
-.contact-form-section { background: #e8d5e8; padding: 3rem 2.5rem; color: #333; }
+.map-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  background: #f8f9fa;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.map-header h4 {
+  margin: 0;
+  color: #333;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.map-controls {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.directions-btn {
+  background: #007bff;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.directions-btn:hover:not(:disabled) {
+  background: #0056b3;
+  transform: translateY(-1px);
+}
+
+.directions-btn:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+.map-close {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: #888;
+  padding: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s ease;
+}
+
+.map-close:hover {
+  color: #333;
+}
+
+/* Google Maps 容器 */
+.google-map-container {
+  width: 100%;
+  height: 220px; /* 稍微减小高度以平衡整体布局 */
+  background: #f0f0f0;
+}
+
+/* 位置信息卡片 */
+.location-info-card {
+  padding: 1rem 1.5rem;
+  background: #f8f9fa;
+  border-top: 1px solid #e9ecef;
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.location-marker-icon {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+  margin-top: 0.2rem;
+}
+
+.location-details p {
+  margin: 0.25rem 0;
+  color: #333;
+}
+
+.phone-info {
+  font-size: 0.9rem;
+  color: #666;
+}
+
+.distance-info {
+  font-size: 0.9rem;
+  color: #007bff;
+  font-weight: 500;
+}
+
+.contact-form-section {
+  background: #e8d5e8;
+  padding: 2.5rem 2rem; /* 与左侧保持一致 */
+  color: #333;
+  display: flex;
+  align-items: center; /* 垂直居中表单 */
+}
+
+.form-row {
+  display: flex;
+  flex-direction: column; /* 垂直排列 */
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+
+/* 优化表单间距 */
+.form-group {
+  margin-bottom: 1.2rem; /* 稍微减少间距 */
+}
+
+.form-textarea {
+  resize: vertical;
+  min-height: 100px; /* 稍微减小高度 */
+  font-family: inherit;
+}
+/* ======= 保持原有表单样式 ======= */
+/* .contact-form-section { background: #e8d5e8; padding: 3rem 2.5rem; color: #333; } */
 .contact-form { width: 100%; }
 
-.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem; }
-.form-group { margin-bottom: 1.5rem; }
+/* .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem; } */
+/* .form-group { margin-bottom: 1.5rem; } */
 .form-row .form-group { margin-bottom: 0; }
 .form-group label { display: block; margin-bottom: 0.5rem; color: #333; font-weight: 500; font-size: 0.9rem; }
 
@@ -429,6 +745,7 @@ async function sendEmail() {
   .contact-container { grid-template-columns: 1fr; gap: 0; }
   .contact-info, .contact-form-section { padding: 2rem; }
   .contact-title { font-size: 2rem; }
+  .google-map-container { height: 200px; }
 }
 @media (max-width: 768px) {
   .contact-page { padding: 1rem; }
@@ -439,11 +756,16 @@ async function sendEmail() {
   .social-media { justify-content: center; }
   .contact-title { text-align: center; }
   .file-upload-display { padding: 1rem; }
+  .map-controls { flex-direction: column; gap: 0.25rem; }
+  .directions-btn { padding: 0.4rem 0.8rem; font-size: 0.8rem; }
 }
 @media (max-width: 480px) {
   .contact-info, .contact-form-section { padding: 1rem; }
   .social-link { width: 35px; height: 35px; }
   .submit-button { padding: 0.875rem 1.5rem; font-size: 1rem; }
   .upload-icon { font-size: 1.5rem; }
+  .google-map-container { height: 180px; }
+  .location-info-card { padding: 0.75rem 1rem; }
 }
+
 </style>
