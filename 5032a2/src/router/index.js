@@ -9,6 +9,8 @@ import Unauthorized from '@/views/Unauthorized.vue'
 
 import RatingPage from '@/views/Rating.vue'
 
+// import ContactForm from '@/views/ContactForm.vue'
+
 // 辅助：从 localStorage 取当前角色
 function getCurrentRole() {
   return localStorage.getItem('currentRole')
@@ -19,7 +21,7 @@ const routes = [
   { path: '/',          component: Home },
   { path: '/services',  component: Services },
   { path: '/contact',   component: Contact },
-
+  // { path: '/contactUs', component: ContactForm },
   // 需要登录（任意角色都行）
   {
     path: '/appointment',

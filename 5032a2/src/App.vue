@@ -1,4 +1,6 @@
 <template>
+  <a href="#main" class="skip-link">Skip to main content</a>
+
   <div>
     <header class="header">
       <!-- 第一行：Logo + 登录/状态 -->
@@ -33,6 +35,7 @@
         <router-link to="/appointment" @click="closeMobileMenu">Appointment</router-link>
         <router-link to="/contact" @click="closeMobileMenu">Contact</router-link>
         <router-link v-if="currentRole === 'admin'" to="/admin-dashboard">Admin Dashboard</router-link>
+        <!-- <router-link to="/contactUs">Contact Us</router-link> -->
 
         <!-- 移动端登录/注册 -->
         <div class="mobile-auth-section">
@@ -48,7 +51,12 @@
       </nav>
     </header>
 
-    <main><router-view/></main>
+    <main id="main" role="main">
+      <router-view />
+      <!-- <router-view /> -->
+      <AccessibilityControls />
+    </main>
+
 
     <footer class="footer">© 2025 HarmoNest Health Foundation</footer>
   </div>
@@ -61,10 +69,12 @@ import logo from '@/assets/logo.png'
 import loginIcon from '@/assets/login-icon.png'
 import { logout } from '@/utils/firebase'     // 调用你封装好的 signOut:contentReference[oaicite:2]{index=2}
 
+import AccessibilityControls from '@/components/AccessibilityControls.vue'
 
 const router = useRouter()
 const route = useRoute()
 const isMobileMenuOpen = ref(false)
+
 
 // 🔧 修改：使用响应式 ref 替代 computed
 const isLoggedIn = ref(false)
@@ -118,6 +128,37 @@ async function onLogout() {
 </script>
 
 <style>
+/* 字体缩放：默认 1；组件会写 body --font-scale */
+body { --font-scale: 1; font-size: calc(16px * var(--font-scale)); }
+input, select, textarea, button { font-size: inherit; }
+
+/* 高对比度：保证“看得见”——简单粗暴但有效 */
+:root[data-contrast="high"] body { background:#fff !important; }
+:root[data-contrast="high"] * { color:#000 !important; text-shadow:none !important; }
+:root[data-contrast="high"] a { color:#0645ad !important; text-decoration: underline; }
+:root[data-contrast="high"] .btn,
+:root[data-contrast="high"] button { filter: none !important; }
+
+/* 减少动效：禁用动画/过渡/平滑滚动（演示明显） */
+:root[data-reduced-motion="1"] * {
+  animation: none !important;
+  transition: none !important;
+  scroll-behavior: auto !important;
+}
+
+:focus-visible {
+  outline: 3px solid #1976d2;
+  outline-offset: 2px;
+}
+
+.skip-link {
+  position: absolute; left: -9999px;
+}
+.skip-link:focus {
+  position: static; padding: .3rem .6rem;
+  background: #000; color:#fff; border-radius:4px;
+}
+
 /* 只加入新样式 */
 .welcome-text {
   margin-right: 1rem;

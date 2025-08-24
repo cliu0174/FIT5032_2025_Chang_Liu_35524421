@@ -54,11 +54,11 @@
         </div>
 
         <!-- Map Section -->
-        <div class="map-container">
+        <div class="map-container" v-if="showMap">
           <div class="map-placeholder">
             <div class="map-header">
               <h4>Healthcare Center Location</h4>
-              <button class="map-close" @click="showMap = !showMap">×</button>
+              <button class="map-close" @click="showMap = !showMap" aria-label="toggle map">×</button>
             </div>
             <div class="map-content">
               <div class="location-marker">
@@ -73,56 +73,139 @@
 
       <!-- Right Side - Contact Form -->
       <div class="contact-form-section">
-        <form @submit.prevent="submitForm" class="contact-form">
+        <form
+          ref="formRef"
+          @submit.prevent="sendEmail"
+          class="contact-form"
+          enctype="multipart/form-data"
+          aria-describedby="status-msg"
+        >
           <div class="form-row">
             <div class="form-group">
-              <label for="firstName">First Name</label>
+              <label for="user_name">Name *</label>
               <input
+                id="user_name"
+                name="user_name"
                 type="text"
-                id="firstName"
-                v-model="form.firstName"
                 required
                 class="form-input"
+                placeholder="Your full name"
+                aria-required="true"
               />
             </div>
 
             <div class="form-group">
-              <label for="lastName">Last Name</label>
+              <label for="user_email">Email *</label>
               <input
-                type="text"
-                id="lastName"
-                v-model="form.lastName"
+                id="user_email"
+                name="user_email"
+                type="email"
                 required
                 class="form-input"
+                placeholder="your.email@example.com"
+                aria-required="true"
               />
             </div>
           </div>
 
           <div class="form-group">
-            <label for="email">Email *</label>
+            <label for="subject">Subject *</label>
             <input
-              type="email"
-              id="email"
-              v-model="form.email"
+              id="subject"
+              name="subject"
+              type="text"
               required
               class="form-input"
+              placeholder="What is this about?"
+              aria-required="true"
             />
           </div>
 
           <div class="form-group">
-            <label for="message">Message</label>
+            <label for="message">Message *</label>
             <textarea
               id="message"
-              v-model="form.message"
+              name="message"
               rows="6"
               class="form-textarea"
-              placeholder="Please describe your inquiry..."
+              placeholder="Please describe your inquiry in detail..."
+              required
+              aria-required="true"
             ></textarea>
           </div>
 
+          <!-- File Upload Section (optional) -->
+          <div class="form-group">
+            <label for="my_file">Attachment (Optional)</label>
+
+            <div class="file-upload-area">
+              <input
+                id="my_file"
+                type="file"
+                name="my_file"
+                class="file-input"
+                @change="handleFileChange"
+                accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.gif,.zip,.xlsx,.pptx"
+              />
+
+              <div class="file-upload-display">
+                <div v-if="!selectedFile" class="file-upload-placeholder">
+                  <div class="upload-icon">📎</div>
+                  <p>Click to select a file or drag and drop</p>
+                  <small>Supported: PDF, DOC, images, etc. (Max: 2.5MB)</small>
+                </div>
+
+                <div v-else class="file-selected">
+                  <div class="file-icon">📄</div>
+                  <div class="file-info">
+                    <div class="file-name">{{ fileName }}</div>
+                    <div class="file-size">{{ formatFileSize(selectedFile.size) }}</div>
+                  </div>
+                  <button
+                    type="button"
+                    class="remove-file-btn"
+                    @click="removeFile"
+                    title="Remove file"
+                    aria-label="Remove attachment"
+                  >
+                    ×
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Submit Button -->
           <button type="submit" class="submit-button" :disabled="isSubmitting">
-            {{ isSubmitting ? 'Sending...' : 'Submit' }}
+            <span v-if="isSubmitting" class="button-content">
+              <span class="spinner"></span>
+              Sending...
+            </span>
+            <span v-else class="button-content">
+              Send Message
+              <span v-if="selectedFile" class="attachment-indicator">+ Attachment</span>
+            </span>
           </button>
+
+          <!-- Status Messages -->
+          <div id="status-msg" class="sr-only" aria-live="polite"></div>
+
+          <div v-if="sentOk" class="status-message success" role="status" aria-live="polite">
+            <div class="status-icon">✅</div>
+            <div>
+              <strong>Email sent successfully!</strong>
+              <p v-if="selectedFile">Your file ({{ fileName }}) may be included subject to size limits.</p>
+              <p v-else>Message delivered successfully.</p>
+            </div>
+          </div>
+
+          <div v-if="errorMsg" class="status-message error" role="alert" aria-live="assertive">
+            <div class="status-icon">❌</div>
+            <div>
+              <strong>Sending failed</strong>
+              <p>{{ errorMsg }}</p>
+            </div>
+          </div>
         </form>
       </div>
     </div>
@@ -131,50 +214,81 @@
 
 <script setup>
 import { ref } from 'vue'
+import emailjs from '@emailjs/browser'
 
-// Form data
-const form = ref({
-  firstName: '',
-  lastName: '',
-  email: '',
-  message: ''
-})
+// EmailJS配置（优先 .env）
+const SERVICE_ID  = import.meta.env.VITE_EMAILJS_SERVICE_ID  || 'service_7irjryz'
+const TEMPLATE_ID = import.meta.env.VITE_EMAILJS_TEMPLATE_ID || 'template_8b27uvn'
+const PUBLIC_KEY  = import.meta.env.VITE_EMAILJS_PUBLIC_KEY  || 'szuVaNVVJR4BEJ0T7'
 
-const isSubmitting = ref(false)
+// 状态
 const showMap = ref(true)
+const isSubmitting = ref(false)
+const sentOk = ref(false)
+const errorMsg = ref('')
+const formRef = ref(null)
+const selectedFile = ref(null)
+const fileName = ref('')
 
-// Form submission
-const submitForm = async () => {
+// 文件处理（限制 2.5MB，符合 EmailJS 免费版常见限制）
+function handleFileChange(e) {
+  const file = e.target.files?.[0]
+  if (!file) {
+    selectedFile.value = null
+    fileName.value = ''
+    return
+  }
+  // 2.5MB 限制，超限直接清除
+  const MAX = 2.5 * 1024 * 1024
+  if (file.size > MAX) {
+    alert('File is larger than 2.5MB. Please choose a smaller file.')
+    e.target.value = ''
+    selectedFile.value = null
+    fileName.value = ''
+    return
+  }
+  selectedFile.value = file
+  fileName.value = file.name
+}
+
+function removeFile() {
+  selectedFile.value = null
+  fileName.value = ''
+  const fileInput = formRef.value?.querySelector('#my_file')
+  if (fileInput) fileInput.value = ''
+}
+
+function formatFileSize(bytes) {
+  if (!bytes) return '0 Bytes'
+  const k = 1024
+  const sizes = ['Bytes', 'KB', 'MB', 'GB']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
+}
+
+// 发送（仅使用 sendForm，简单可靠）
+async function sendEmail() {
+  if (!SERVICE_ID || !TEMPLATE_ID || !PUBLIC_KEY) {
+    alert('EmailJS configuration missing, please check .env')
+    return
+  }
+
   isSubmitting.value = true
+  sentOk.value = false
+  errorMsg.value = ''
 
   try {
-    // Simulate form submission
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    const res = await emailjs.sendForm(SERVICE_ID, TEMPLATE_ID, formRef.value, { publicKey: PUBLIC_KEY })
+    console.log('EmailJS sendForm result:', res)
+    sentOk.value = true
 
-    // Save contact submission to localStorage (for demo purposes)
-    const submissions = JSON.parse(localStorage.getItem('contactSubmissions') || '[]')
-    const newSubmission = {
-      id: Date.now().toString(),
-      ...form.value,
-      timestamp: new Date().toISOString(),
-      submittedAt: new Date().toLocaleString()
-    }
-
-    submissions.unshift(newSubmission)
-    localStorage.setItem('contactSubmissions', JSON.stringify(submissions))
-
-    alert('Thank you for your message! We will get back to you soon.')
-
-    // Reset form
-    form.value = {
-      firstName: '',
-      lastName: '',
-      email: '',
-      message: ''
-    }
-  } catch (error) {
-    console.error('Error submitting form:', error)
-    alert('There was an error sending your message. Please try again.')
+    // 重置
+    formRef.value?.reset()
+    selectedFile.value = null
+    fileName.value = ''
+  } catch (e) {
+    console.error('Email sending failed:', e)
+    errorMsg.value = e?.text || e?.message || 'Send failed'
   } finally {
     isSubmitting.value = false
   }
@@ -182,6 +296,13 @@ const submitForm = async () => {
 </script>
 
 <style scoped>
+/* 屏幕阅读器专用隐藏（但可被读） */
+.sr-only {
+  position: absolute !important; height: 1px; width: 1px;
+  overflow: hidden; clip: rect(1px,1px,1px,1px); white-space: nowrap;
+}
+
+/* ======= 以下全部保持你原有样式（仅略微调整几处文案） ======= */
 .contact-page {
   min-height: 100vh;
   background: white;
@@ -205,7 +326,6 @@ const submitForm = async () => {
   font-weight: normal;
 }
 
-/* Left Side - Contact Info */
 .contact-info {
   background: #e8d5e8;
   padding: 3rem 2.5rem;
@@ -219,346 +339,111 @@ const submitForm = async () => {
   margin: 0 0 2rem 0;
 }
 
-.contact-details {
-  margin-bottom: 2rem;
-}
+.contact-details { margin-bottom: 2rem; }
+.phone-text { font-size: 1.1rem; line-height: 1.6; margin-bottom: 1.5rem; color: #333; }
+.phone-text strong { color: #333; font-weight: 600; }
+.address-section { margin-bottom: 2rem; }
+.address-section h3 { font-size: 1.2rem; font-weight: 600; color: #333; margin: 0 0 0.5rem 0; }
+.address-section address { font-style: normal; line-height: 1.6; color: #333; }
 
-.phone-text {
-  font-size: 1.1rem;
-  line-height: 1.6;
-  margin-bottom: 1.5rem;
-  color: #333;
-}
+.social-media { display: flex; gap: 1rem; margin-bottom: 2rem; }
+.social-link { width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; border-radius: 8px; transition: all 0.3s ease; text-decoration: none; }
+.social-link.youtube { background: #ff0000; color: white; }
+.social-link.instagram { background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%); color: white; }
+.social-link.facebook { background: #1877f2; color: white; }
+.social-link.twitter { background: #1da1f2; color: white; }
+.social-link.linkedin { background: #0077b5; color: white; }
+.social-link:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2); }
 
-.phone-text strong {
-  color: #333;
-  font-weight: 600;
-}
+.map-container { margin-top: 1rem; }
+.map-placeholder { background: white; border-radius: 12px; padding: 1.5rem; min-height: 200px; position: relative; border: 1px solid rgba(93, 78, 117, 0.2); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); }
+.map-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; border-bottom: 1px solid rgba(93, 78, 117, 0.2); padding-bottom: 0.5rem; }
+.map-header h4 { margin: 0; color: #333; font-size: 1.1rem; font-weight: 600; }
+.map-close { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #888; padding: 0; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; }
+.map-content { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; min-height: 120px; }
+.location-marker { position: relative; margin-bottom: 1rem; }
+.marker-pin { width: 20px; height: 20px; background: #dc3545; border-radius: 50%; position: relative; z-index: 2; }
+.marker-pin::before { content: ''; position: absolute; top: -10px; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 10px solid transparent; border-right: 10px solid transparent; border-bottom: 15px solid #dc3545; }
+.marker-pulse { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 40px; height: 40px; background: rgba(220, 53, 69, 0.3); border-radius: 50%; animation: pulse 2s infinite; }
+@keyframes pulse { 0% { transform: translate(-50%, -50%) scale(0.8); opacity: 1; } 100% { transform: translate(-50%, -50%) scale(2); opacity: 0; } }
+.map-address { color: #333; font-size: 0.9rem; line-height: 1.4; margin: 0; font-weight: normal; }
 
-.address-section {
-  margin-bottom: 2rem;
-}
+.contact-form-section { background: #e8d5e8; padding: 3rem 2.5rem; color: #333; }
+.contact-form { width: 100%; }
 
-.address-section h3 {
-  font-size: 1.2rem;
-  font-weight: 600;
-  color: #333;
-  margin: 0 0 0.5rem 0;
-}
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem; }
+.form-group { margin-bottom: 1.5rem; }
+.form-row .form-group { margin-bottom: 0; }
+.form-group label { display: block; margin-bottom: 0.5rem; color: #333; font-weight: 500; font-size: 0.9rem; }
 
-.address-section address {
-  font-style: normal;
-  line-height: 1.6;
-  color: #333;
+.form-input, .form-textarea {
+  width: 100%; box-sizing: border-box; padding: 0.875rem 1rem; border: 2px solid #e1d5e1; border-radius: 8px;
+  font-size: 1rem; transition: border-color 0.3s ease, box-shadow 0.3s ease; background: white; color: #333; font-family: Arial, sans-serif; font-weight: normal;
 }
+.form-input:focus, .form-textarea:focus { outline: none; border-color: #8b7ba8; box-shadow: 0 0 0 3px rgba(139, 123, 168, 0.1); }
+.form-textarea { resize: vertical; min-height: 120px; font-family: inherit; }
 
-/* Social Media */
-.social-media {
-  display: flex;
-  gap: 1rem;
-  margin-bottom: 2rem;
-}
+/* 文件上传 */
+.file-upload-area { position: relative; }
+.file-input { position: absolute; opacity: 0; width: 100%; height: 100%; cursor: pointer; }
+.file-upload-display { border: 2px dashed #e1d5e1; border-radius: 8px; padding: 1.5rem; transition: all 0.3s ease; background: #fafafa; }
+.file-upload-display:hover { border-color: #8b7ba8; background: #f5f2f5; }
+.file-upload-placeholder { text-align: center; color: #6c757d; }
+.upload-icon { font-size: 2rem; margin-bottom: 0.5rem; }
+.file-upload-placeholder p { margin: 0.5rem 0; font-weight: 500; }
+.file-upload-placeholder small { font-size: 0.8rem; color: #adb5bd; }
 
-.social-link {
-  width: 40px;
-  height: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 8px;
-  transition: all 0.3s ease;
-  text-decoration: none;
-}
+.file-selected { display: flex; align-items: center; gap: 1rem; background: #e8f5e8; border-radius: 6px; padding: 1rem; border: 1px solid #d4edda; }
+.file-icon { font-size: 1.5rem; }
+.file-info { flex: 1; }
+.file-name { font-weight: 600; color: #2c3e50; margin-bottom: 0.25rem; }
+.file-size { color: #6c757d; font-size: 0.85rem; }
+.remove-file-btn { background: none; border: none; cursor: pointer; font-size: 1.2rem; opacity: 0.7; transition: opacity 0.2s; }
+.remove-file-btn:hover { opacity: 1; }
 
-.social-link.youtube {
-  background: #ff0000;
-  color: white;
-}
-
-.social-link.instagram {
-  background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
-  color: white;
-}
-
-.social-link.facebook {
-  background: #1877f2;
-  color: white;
-}
-
-.social-link.twitter {
-  background: #1da1f2;
-  color: white;
-}
-
-.social-link.linkedin {
-  background: #0077b5;
-  color: white;
-}
-
-.social-link:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-}
-
-/* Map */
-.map-container {
-  margin-top: 1rem;
-}
-
-.map-placeholder {
-  background: white;
-  border-radius: 12px;
-  padding: 1.5rem;
-  min-height: 200px;
-  position: relative;
-  border: 1px solid rgba(93, 78, 117, 0.2);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.map-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1rem;
-  border-bottom: 1px solid rgba(93, 78, 117, 0.2);
-  padding-bottom: 0.5rem;
-}
-
-.map-header h4 {
-  margin: 0;
-  color: #333;
-  font-size: 1.1rem;
-  font-weight: 600;
-}
-
-.map-close {
-  background: none;
-  border: none;
-  font-size: 1.5rem;
-  cursor: pointer;
-  color: #888;
-  padding: 0;
-  width: 24px;
-  height: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.map-content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  min-height: 120px;
-}
-
-.location-marker {
-  position: relative;
-  margin-bottom: 1rem;
-}
-
-.marker-pin {
-  width: 20px;
-  height: 20px;
-  background: #dc3545;
-  border-radius: 50%;
-  position: relative;
-  z-index: 2;
-}
-
-.marker-pin::before {
-  content: '';
-  position: absolute;
-  top: -10px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 0;
-  height: 0;
-  border-left: 10px solid transparent;
-  border-right: 10px solid transparent;
-  border-bottom: 15px solid #dc3545;
-}
-
-.marker-pulse {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 40px;
-  height: 40px;
-  background: rgba(220, 53, 69, 0.3);
-  border-radius: 50%;
-  animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-  0% {
-    transform: translate(-50%, -50%) scale(0.8);
-    opacity: 1;
-  }
-  100% {
-    transform: translate(-50%, -50%) scale(2);
-    opacity: 0;
-  }
-}
-
-.map-address {
-  color: #333;
-  font-size: 0.9rem;
-  line-height: 1.4;
-  margin: 0;
-  font-weight: normal;
-}
-
-/* Right Side - Contact Form */
-.contact-form-section {
-  background: #e8d5e8;
-  padding: 3rem 2.5rem;
-  color: #333;
-}
-
-.contact-form {
-  width: 100%;
-}
-
-.form-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1.5rem;
-  margin-bottom: 1.5rem;
-}
-
-.form-group {
-  margin-bottom: 1.5rem;
-}
-
-.form-row .form-group {
-  margin-bottom: 0;
-}
-
-.form-group label {
-  display: block;
-  margin-bottom: 0.5rem;
-  color: #333;
-  font-weight: 500;
-  font-size: 0.9rem;
-}
-
-.form-input,
-.form-textarea {
-  width: 100%;
-  box-sizing: border-box;
-  padding: 0.875rem 1rem;
-  border: 2px solid #e1d5e1;
-  border-radius: 8px;
-  font-size: 1rem;
-  transition: border-color 0.3s ease, box-shadow 0.3s ease;
-  background: white;
-  color: #333;
-  font-family: Arial, sans-serif;
-  font-weight: normal;
-}
-
-.form-input:focus,
-.form-textarea:focus {
-  outline: none;
-  border-color: #8b7ba8;
-  box-shadow: 0 0 0 3px rgba(139, 123, 168, 0.1);
-}
-
-.form-textarea {
-  resize: vertical;
-  min-height: 120px;
-  font-family: inherit;
-}
-
+/* 提交按钮 */
 .submit-button {
-  width: 100%;
-  background: linear-gradient(135deg, #6b4c94, #5d4e75);
-  color: white;
-  border: none;
-  padding: 1rem 2rem;
-  font-size: 1.1rem;
-  font-weight: 600;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  width: 100%; background: linear-gradient(135deg, #28a745, #20c997); color: white; border: none;
+  padding: 1rem 2rem; font-size: 1.1rem; font-weight: 600; border-radius: 8px; cursor: pointer;
+  transition: all 0.3s ease; text-transform: uppercase; letter-spacing: 0.5px;
 }
+.submit-button:hover:not(:disabled) { background: linear-gradient(135deg, #218838, #1ea085); transform: translateY(-2px); box-shadow: 0 6px 20px rgba(40, 167, 69, 0.3); }
+.submit-button:disabled { opacity: 0.7; cursor: not-allowed; transform: none; }
+.button-content { display: flex; align-items: center; justify-content: center; gap: 0.5rem; }
+.attachment-indicator { background: rgba(255, 255, 255, 0.2); padding: 0.25rem 0.5rem; border-radius: 12px; font-size: 0.8rem; }
 
-.submit-button:hover:not(:disabled) {
-  background: linear-gradient(135deg, #5d4e75, #4a4a4a);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 15px rgba(107, 76, 148, 0.3);
-}
+/* 加载动画 */
+.spinner { width: 16px; height: 16px; border: 2px solid rgba(255, 255, 255, 0.3); border-top: 2px solid white; border-radius: 50%; animation: spin 1s linear infinite; }
+@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-.submit-button:disabled {
-  opacity: 0.7;
-  cursor: not-allowed;
-  transform: none;
-}
+/* 状态消息 */
+.status-message { display: flex; align-items: flex-start; gap: 1rem; padding: 1rem; border-radius: 8px; margin-top: 1rem; }
+.status-message.success { background: #d4edda; border: 1px solid #c3e6cb; color: #155724; }
+.status-message.error { background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
+.status-icon { font-size: 1.2rem; flex-shrink: 0; }
+.status-message strong { display: block; margin-bottom: 0.25rem; }
+.status-message p { margin: 0; font-size: 0.9rem; }
 
-/* Responsive Design */
+/* 响应式 */
 @media (max-width: 968px) {
-  .contact-container {
-    grid-template-columns: 1fr;
-    gap: 0;
-  }
-
-  .contact-info,
-  .contact-form-section {
-    padding: 2rem;
-  }
-
-  .contact-title {
-    font-size: 2rem;
-  }
+  .contact-container { grid-template-columns: 1fr; gap: 0; }
+  .contact-info, .contact-form-section { padding: 2rem; }
+  .contact-title { font-size: 2rem; }
 }
-
 @media (max-width: 768px) {
-  .contact-page {
-    padding: 1rem;
-  }
-
-  .contact-info,
-  .contact-form-section {
-    padding: 1.5rem;
-  }
-
-  .form-row {
-    grid-template-columns: 1fr;
-    gap: 0;
-  }
-
-  .form-row .form-group {
-    margin-bottom: 1.5rem;
-  }
-
-  .form-row .form-group:last-child {
-    margin-bottom: 0;
-  }
-
-  .social-media {
-    justify-content: center;
-  }
-
-  .contact-title {
-    text-align: center;
-  }
+  .contact-page { padding: 1rem; }
+  .contact-info, .contact-form-section { padding: 1.5rem; }
+  .form-row { grid-template-columns: 1fr; gap: 0; }
+  .form-row .form-group { margin-bottom: 1.5rem; }
+  .form-row .form-group:last-child { margin-bottom: 0; }
+  .social-media { justify-content: center; }
+  .contact-title { text-align: center; }
+  .file-upload-display { padding: 1rem; }
 }
-
 @media (max-width: 480px) {
-  .contact-info,
-  .contact-form-section {
-    padding: 1rem;
-  }
-
-  .social-link {
-    width: 35px;
-    height: 35px;
-  }
+  .contact-info, .contact-form-section { padding: 1rem; }
+  .social-link { width: 35px; height: 35px; }
+  .submit-button { padding: 0.875rem 1.5rem; font-size: 1rem; }
+  .upload-icon { font-size: 1.5rem; }
 }
 </style>
