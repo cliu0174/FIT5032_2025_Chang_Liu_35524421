@@ -10,7 +10,16 @@ function json(data, status = 200) {
 export async function onRequestPost({ request }) {
   try {
     const body = await request.json();
-    const arr = Array.isArray(body?.numbers) ? body.numbers.map(Number) : null;
+    const arr = Array.isArray(body?.numbers)
+      ? body.numbers.map(n => parseFloat(n)).filter(n => !Number.isNaN(n))
+      : [];
+
+    if (arr.length === 0) {
+      return json({
+        ok: false,
+        error: 'Body must contain { numbers: number[] } with at least one valid number'
+      }, 400);
+    }
 
     if (!arr || arr.length === 0 || arr.some(n => Number.isNaN(n))) {
       return json({ ok: false, error: 'Body must be { numbers: number[] }' }, 400);
